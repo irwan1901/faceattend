@@ -1,0 +1,2414 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base target="_top">
+  <title>FaceAttend AI — Sistem Absensi Wajah Siswa Realtime</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Face-API.js (Vladmandic Build) via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              400: '#00A8FF',
+              500: '#006CFF',
+              600: '#2563EB',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.4); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.7); }
+
+    /* Blue Accent Gradient Text */
+    .text-gradient-blue {
+      background: linear-gradient(135deg, #00A8FF 0%, #006CFF 50%, #2563EB 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Laser Scanner Line */
+    @keyframes scanAnimation {
+      0% { top: 0%; opacity: 0.8; }
+      50% { opacity: 1; }
+      100% { top: 96%; opacity: 0.8; }
+    }
+    .scanner-beam {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #00A8FF, #2563EB, transparent);
+      box-shadow: 0 0 15px #006CFF;
+      animation: scanAnimation 2.4s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    /* Continuous Moving Border Light Animation */
+    @keyframes spinBorder {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .moving-border-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.25rem;
+    }
+    .moving-border-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(transparent, #00A8FF, #2563EB, transparent 35%);
+      animation: spinBorder 5s linear infinite;
+      z-index: 0;
+    }
+    .moving-border-inner {
+      position: relative;
+      z-index: 1;
+      border-radius: 1.15rem;
+    }
+
+    /* 3D Curved / Fan Carousel Perspective System */
+    .carousel-perspective-viewport {
+      perspective: 1200px;
+      transform-style: preserve-3d;
+    }
+    .carousel-3d-stage {
+      position: relative;
+      width: 100%;
+      height: 320px;
+      transform-style: preserve-3d;
+    }
+    @media (min-width: 640px) {
+      .carousel-3d-stage { height: 380px; }
+    }
+    .carousel-item-card {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 78%;
+      max-width: 440px;
+      height: 100%;
+      margin-left: -39%;
+      transform-style: preserve-3d;
+      transition: all 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+      will-change: transform, opacity;
+    }
+    @media (min-width: 640px) {
+      .carousel-item-card {
+        width: 68%;
+        margin-left: -34%;
+      }
+    }
+    .card-pos-active {
+      transform: translateX(0%) translateZ(80px) scale(1) rotateY(0deg);
+      z-index: 30;
+      opacity: 1;
+    }
+    .card-pos-prev {
+      transform: translateX(-48%) translateZ(-90px) scale(0.85) rotateY(18deg);
+      z-index: 15;
+      opacity: 0.65;
+    }
+    .card-pos-next {
+      transform: translateX(48%) translateZ(-90px) scale(0.85) rotateY(-18deg);
+      z-index: 15;
+      opacity: 0.65;
+    }
+    .card-pos-hidden {
+      transform: translateX(0%) translateZ(-200px) scale(0.65);
+      z-index: 5;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Scroll-Driven Animation Helper */
+    .scroll-reveal-card {
+      opacity: 0;
+      transform: translateY(28px) scale(0.98);
+      transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .scroll-reveal-card.revealed {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Double Layer Blue Frame */
+    .double-blue-frame::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 1.5rem;
+      border: 2px solid rgba(0, 168, 255, 0.4);
+      pointer-events: none;
+      transform: translate(6px, 8px) rotate(-1.5deg);
+      z-index: -1;
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .scroll-reveal-card { opacity: 1 !important; transform: none !important; }
+      .carousel-item-card { transition: none !important; }
+      .scanner-beam { animation: none !important; }
+      .moving-border-card::before { animation: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-brand-500 selection:text-white transition-colors duration-300" id="mainBody">
+
+  <nav class="sticky top-0 z-50 bg-slate-900/85 dark:bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <a href="#landing" onclick="navigateToSection('landing')" class="flex items-center gap-3 group">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-400 via-brand-500 to-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/25 group-hover:scale-105 transition-transform duration-300">
+          <i class="fa-solid fa-camera-viewfinder text-lg"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-base md:text-lg tracking-tight text-white flex items-center gap-2">
+            FaceAttend<span class="text-brand-400 font-mono">AI</span>
+          </span>
+          <p class="text-[10px] text-slate-400 font-mono">Realtime Face Attendance</p>
+        </div>
+      </a>
+
+      <!-- Desktop Nav Items -->
+      <div class="hidden lg:flex items-center gap-6 text-xs font-medium text-slate-300">
+        <a href="#landing" onclick="navigateToSection('landing')" class="hover:text-brand-400 transition">Beranda</a>
+        <a href="#carouselSection" onclick="navigateToSection('carouselSection')" class="hover:text-brand-400 transition">Galeri 3D</a>
+        <a href="#features" onclick="navigateToSection('features')" class="hover:text-brand-400 transition">Fitur Unggulan</a>
+        <a href="#mapsSection" onclick="navigateToSection('mapsSection')" class="hover:text-brand-400 transition">Lokasi Sekolah</a>
+        <a href="#footerSection" onclick="navigateToSection('footerSection')" class="hover:text-brand-400 transition">Kontak</a>
+      </div>
+
+      <!-- Header Actions: Theme Toggle, App Switcher, Auth -->
+      <div class="flex items-center gap-2.5">
+        <!-- Theme Toggle -->
+        <button onclick="toggleTheme()" id="themeBtn" title="Ganti Tema" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-amber-400 text-sm transition">
+          <i class="fa-solid fa-sun" id="themeIcon"></i>
+        </button>
+
+        <!-- Runtime Badge (GitHub Pages / Google Apps Script / Local) -->
+        <div id="runtimeBadge" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[10px] font-mono text-brand-400" title="Status Platform Runtime">
+          <span class="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse"></span>
+          <span id="runtimeText">Mendeteksi Host...</span>
+        </div>
+
+        <!-- Auth Button -->
+        <button onclick="handleAuthAction()" id="btnAuthNav" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-brand-400 to-brand-600 hover:opacity-95 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-brand-500/20 transition">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i>
+          <span id="authNavText">Masuk Admin</span>
+        </button>
+      </div>
+
+    </div>
+  </nav>
+
+  <div id="viewLanding" class="flex-1 flex flex-col">
+    
+    <!-- Hero Section -->
+    <header id="landing" class="relative pt-8 pb-16 px-4 overflow-hidden">
+      <!-- Ambient Background Glows -->
+      <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute top-1/2 right-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        
+        <!-- Sisi Kiri: Headline & Blue Gradient Text -->
+        <div class="lg:col-span-6 space-y-6">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-400 text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-brand-400 animate-ping"></span>
+            <span>GITHUB PAGES + GOOGLE SHEETS LIVE</span>
+          </div>
+
+          <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+            Presensi Siswa Otomatis Berbasis 
+            <span class="text-gradient-blue block mt-1">Vektor Wajah 128-D</span>
+          </h1>
+
+          <p class="text-slate-300 text-sm md:text-base leading-relaxed max-w-xl">
+            Solusi presensi cerdas bebas blokir izin kamera dengan HTTPS native. Didukung pemrosesan AI edge client-side berkecepatan tinggi yang tersinkronisasi langsung ke <strong class="text-white">Google Spreadsheet</strong> dan <strong class="text-white">Google Drive</strong>.
+          </p>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-wrap items-center gap-3 pt-2">
+            <button onclick="openAppTab('presensi')" class="px-5 py-3 rounded-xl bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 text-white font-semibold text-xs md:text-sm flex items-center gap-2 shadow-xl shadow-brand-500/25 hover:scale-[1.02] active:scale-[0.98] transition">
+              <i class="fa-solid fa-camera"></i>
+              <span>Mulai Mode Presensi</span>
+            </button>
+            <button onclick="openAppTab('enroll')" class="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs md:text-sm font-medium flex items-center gap-2 transition">
+              <i class="fa-solid fa-user-plus text-brand-400"></i>
+              <span>Daftarkan Siswa Baru</span>
+            </button>
+          </div>
+
+          <!-- Quick Micro Stats -->
+          <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-800/80">
+            <div>
+              <div class="font-mono text-xl md:text-2xl font-bold text-brand-400">99.8%</div>
+              <div class="text-[11px] text-slate-400">Akurasi AI TinyFace</div>
+            </div>
+            <div>
+              <div class="font-mono text-xl md:text-2xl font-bold text-emerald-400">&lt; 350ms</div>
+              <div class="text-[11px] text-slate-400">Waktu Verifikasi</div>
+            </div>
+            <div>
+              <div class="font-mono text-xl md:text-2xl font-bold text-blue-400">Cloud Sync</div>
+              <div class="text-[11px] text-slate-400">Google Sheets DB</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sisi Kanan: Large Tilted Rounded Card with Double-Layer Blue Outline -->
+        <div class="lg:col-span-6 flex justify-center">
+          <div class="relative w-full max-w-md double-blue-frame cursor-pointer" id="heroTiltCard">
+            
+            <div class="moving-border-card p-[2px] shadow-2xl">
+              <div class="moving-border-inner bg-slate-900 border border-slate-800 p-4 flex flex-col gap-4">
+                
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                    <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                  </div>
+                  <span class="text-[10px] font-mono text-brand-400 flex items-center gap-1">
+                    <i class="fa-solid fa-shield-halved"></i> HTTPS Native Camera Active
+                  </span>
+                </div>
+
+                <div class="relative aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                  <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80" alt="Students in Classroom" class="w-full h-full object-cover opacity-80">
+                  <div class="scanner-beam"></div>
+                  
+                  <div class="absolute inset-x-12 top-6 bottom-6 border-2 border-emerald-400 rounded-lg flex flex-col justify-between p-2 pointer-events-none">
+                    <span class="bg-emerald-500 text-white font-mono text-[9px] px-1.5 py-0.5 rounded self-start">Ahmad Fauzan (98.4%)</span>
+                    <span class="text-emerald-300 font-mono text-[9px] self-end">TERVERIFIKASI ✓</span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                      <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div>
+                      <p class="font-bold text-white text-[11px]">Anti-Duplikasi</p>
+                      <p class="text-[10px] text-slate-400">1x Absen / Hari</p>
+                    </div>
+                  </div>
+                  <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center flex-shrink-0">
+                      <i class="fa-solid fa-file-excel"></i>
+                    </div>
+                    <div>
+                      <p class="font-bold text-white text-[11px]">Google Sheets</p>
+                      <p class="text-[10px] text-slate-400">Auto Rekapitulasi</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </header>
+
+    <section id="carouselSection" class="py-12 px-4 border-t border-slate-900 bg-slate-950/60 scroll-reveal-card">
+      <div class="max-w-7xl mx-auto">
+        
+        <div class="text-center max-w-2xl mx-auto mb-8">
+          <span class="text-xs font-mono font-semibold text-brand-400 uppercase tracking-widest">GALERI 3D INTERAKTIF</span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">Ekosistem Digital Sekolah</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-2">Geser atau gunakan tombol navigasi untuk menjelajahi fasilitas presensi dan kegiatan belajar mengajar.</p>
+        </div>
+
+        <div class="carousel-perspective-viewport relative">
+          <div class="carousel-3d-stage" id="carouselStage"></div>
+
+          <button onclick="prevCarouselSlide()" class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/90 hover:bg-brand-600 border border-slate-700 text-white flex items-center justify-center shadow-2xl z-40 transition" title="Slide Sebelumnya">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button onclick="nextCarouselSlide()" class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/90 hover:bg-brand-600 border border-slate-700 text-white flex items-center justify-center shadow-2xl z-40 transition" title="Slide Selanjutnya">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+
+          <div class="flex items-center justify-center gap-2 mt-6" id="carouselDots"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="features" class="py-16 px-4 max-w-7xl mx-auto w-full">
+      <div class="text-center max-w-2xl mx-auto mb-12 scroll-reveal-card">
+        <span class="text-xs font-mono font-semibold text-brand-400 uppercase tracking-widest">KEUNGGULAN UTAMA</span>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">Dirancang Khusus untuk Sekolah Modern</h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-2">Bebas hambatan izin kamera browser dengan performa penuh AI client-side.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="scroll-reveal-card bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col gap-3 hover:border-brand-500/50 transition">
+          <div class="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/30 text-brand-400 flex items-center justify-center text-xl">
+            <i class="fa-brands fa-github"></i>
+          </div>
+          <h3 class="text-base font-bold text-white">Deploy GitHub Pages 1-Click</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Berjalan di domain HTTPS resmi tanpa iframe sandbox, menjamin akses kamera laptop & ponsel selalu diizinkan dengan mulus.</p>
+        </div>
+
+        <div class="scroll-reveal-card bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col gap-3 hover:border-brand-500/50 transition">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-file-shield"></i>
+          </div>
+          <h3 class="text-base font-bold text-white">Database Google Spreadsheet</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Guru dan operator dapat langsung melihat rekapitulasi data absensi di Google Sheets tanpa perlu mengelola server database SQL rumit.</p>
+        </div>
+
+        <div class="scroll-reveal-card bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col gap-3 hover:border-brand-500/50 transition">
+          <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-microchip"></i>
+          </div>
+          <h3 class="text-base font-bold text-white">Audio Chime & Anti-Spam</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Dilengkapi suara verifikasi instan via Web Audio API dan mekanisme debounce proteksi presensi ganda otomatis per hari per siswa.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="mapsSection" class="py-14 px-4 bg-slate-900/50 border-t border-slate-800 scroll-reveal-card">
+      <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+          <div>
+            <span class="text-xs font-mono font-semibold text-brand-400 uppercase tracking-widest">LOKASI & MONITOR PRESENSI</span>
+            <h2 class="text-2xl font-bold text-white mt-1" id="mapsTitle">Pusat Informasi Kampus Sekolah</h2>
+            <p class="text-xs text-slate-400 mt-1 max-w-xl" id="mapsAddressText">Memuat alamat sekolah...</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <a id="mapsDirectLink" href="https://maps.google.com" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-2 transition">
+              <i class="fa-solid fa-arrow-up-right-from-square text-brand-400"></i> Buka di Google Maps
+            </a>
+          </div>
+        </div>
+
+        <div class="w-full h-80 sm:h-96 rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative shadow-2xl">
+          <iframe id="mapsIframe" class="w-full h-full border-0" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <div id="mapsPlaceholder" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-slate-500 text-xs p-4 hidden">
+            <i class="fa-solid fa-map-location-dot text-3xl mb-2 text-slate-600"></i>
+            <span>Peta sedang dimuat atau lokasi dinonaktifkan oleh administrator.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div id="viewApp" class="flex-1 hidden flex-col max-w-7xl w-full mx-auto p-4 sm:p-6">
+    
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-xl">
+      <div class="flex items-center gap-3 w-full md:w-auto">
+        <button onclick="navigateToSection('landing')" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition" title="Kembali ke Beranda">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <div>
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <span id="appPanelTitle">Dashboard Presensi Wajah</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ONLINE</span>
+          </h2>
+          <p class="text-[11px] text-slate-400">Panel Operasional Presensi Siswa</p>
+        </div>
+      </div>
+
+      <!-- App Tabs -->
+      <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-medium w-full md:w-auto overflow-x-auto">
+        <button id="tabBtnPresensi" onclick="switchAppTab('presensi')" class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 bg-brand-600 text-white shadow transition">
+          <i class="fa-solid fa-qrcode"></i> Presensi Kelas
+        </button>
+        <button id="tabBtnEnroll" onclick="switchAppTab('enroll')" class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-user-plus"></i> Pendaftaran Wajah
+        </button>
+        <button id="tabBtnCarouselAdmin" onclick="switchAppTab('carouselAdmin')" class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-images"></i> Kelola 3D
+        </button>
+        <button id="tabBtnSettings" onclick="switchAppTab('settings')" class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-sliders"></i> Pengaturan & API
+        </button>
+      </div>
+    </div>
+
+    <!-- SUB-TAB 1: PRESENSI KELAS -->
+    <div id="subTabPresensi" class="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+      
+      <!-- Sisi Kiri: Kamera Scanner -->
+      <section class="lg:col-span-5 flex flex-col gap-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3 relative overflow-hidden">
+          
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" id="cameraStatusDot"></span>
+              <span class="text-xs font-bold text-white">Pemindai Kamera</span>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] text-slate-400">Sensitivitas:</span>
+              <select id="cameraTolerance" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2 py-1 text-slate-200 focus:outline-none">
+                <option value="0.45">Ketat (0.45)</option>
+                <option value="0.52" selected>Standar (0.52)</option>
+                <option value="0.60">Sensitif (0.60)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Camera Viewport -->
+          <div class="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+            <video id="videoScanner" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
+            <canvas id="canvasOverlay" class="absolute inset-0 w-full h-full pointer-events-none transform -scale-x-100"></canvas>
+            
+            <div id="scannerLaser" class="scanner-beam hidden"></div>
+
+            <div id="cameraCover" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center gap-3">
+              <div class="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-xl">
+                <i class="fa-solid fa-video-slash"></i>
+              </div>
+              <p class="text-xs font-semibold text-slate-200">Kamera Pemindai Nonaktif</p>
+              <button onclick="startScannerCamera()" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-brand-500/20 transition">
+                <i class="fa-solid fa-play"></i> Aktifkan Kamera
+              </button>
+            </div>
+
+            <!-- Instant Toast Verification -->
+            <div id="instantToast" class="absolute bottom-3 left-3 right-3 bg-emerald-950/95 border border-emerald-500/80 rounded-xl p-3 shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+              <div class="w-11 h-11 rounded-lg bg-emerald-900/80 overflow-hidden flex-shrink-0 border border-emerald-400/50 flex items-center justify-center">
+                <img id="toastStudentPhoto" src="" alt="Siswa" class="w-full h-full object-cover hidden">
+                <i id="toastStudentIcon" class="fa-solid fa-user-check text-emerald-400 text-base"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Wajah Terverifikasi</span>
+                </div>
+                <h4 id="toastStudentName" class="text-xs font-bold text-white truncate">Nama Siswa</h4>
+                <p id="toastStudentMeta" class="text-[11px] text-emerald-200/80 truncate">NISN: - | Jam: 00:00:00</p>
+              </div>
+              <div class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-check text-xs"></i>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <select id="selectCameraDevice" onchange="changeActiveCamera()" class="flex-1 min-w-[140px] bg-slate-800 border border-slate-700 text-xs rounded-xl px-3 py-2 text-slate-200 focus:outline-none">
+              <option value="">Pilih Sumber Kamera...</option>
+            </select>
+            <button id="btnToggleCam" onclick="toggleScannerCamera()" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs flex items-center gap-2 transition">
+              <i class="fa-solid fa-play"></i>
+              <span id="btnCamText">Mulai</span>
+            </button>
+            <button onclick="triggerNativeScannerCapture()" title="Presensi Foto Jepret Cepat (Kamera HP/Laptop)" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 text-xs flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-camera"></i>
+              <span class="hidden sm:inline">Foto Cepat</span>
+            </button>
+          </div>
+
+          <div class="bg-slate-950/70 rounded-xl p-3 border border-slate-800 flex items-center justify-between text-xs">
+            <span class="text-slate-400 flex items-center gap-2">
+              <i class="fa-solid fa-microchip text-brand-400"></i> AI Models:
+              <strong class="text-slate-200" id="aiStatusLabel">Memuat Model...</strong>
+            </span>
+            <span class="font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20" id="totalEnrolledBadge">0 Wajah</span>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Sisi Kanan: Log Kehadiran Realtime -->
+      <section class="lg:col-span-7 flex flex-col gap-4">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              Log Kehadiran Kelas
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30">REALTIME</span>
+            </h3>
+            <p id="currentDateText" class="text-xs text-slate-400 mt-0.5">Memuat tanggal...</p>
+          </div>
+
+          <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <div class="text-right">
+              <div id="digitalClockText" class="font-mono text-xl font-bold text-emerald-400">00:00:00</div>
+              <span class="text-[10px] text-slate-500 font-mono">WIB</span>
+            </div>
+            <select id="filterClassSelect" onchange="renderAttendanceTable()" class="bg-slate-800 border border-slate-700 text-xs rounded-xl px-3 py-2 text-slate-200 focus:outline-none">
+              <option value="ALL">Semua Kelas</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
+            <span class="text-xs text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-users text-blue-400"></i> Total Siswa</span>
+            <span id="statTotalStudents" class="text-xl font-bold font-mono text-white">0</span>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
+            <span class="text-xs text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-user-check"></i> Hadir</span>
+            <span id="statAttendedCount" class="text-xl font-bold font-mono text-emerald-400">0</span>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
+            <span class="text-xs text-rose-400 flex items-center gap-1.5"><i class="fa-solid fa-user-xmark"></i> Belum Hadir</span>
+            <span id="statAbsentCount" class="text-xl font-bold font-mono text-rose-400">0</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex-1 flex flex-col min-h-[380px]">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-3">
+            <div class="relative w-full sm:w-64">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+              <input type="text" id="searchAttendanceInput" oninput="renderAttendanceTable()" placeholder="Cari nama atau NISN..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none">
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button onclick="exportAttendanceCSV()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-file-csv text-emerald-400"></i> Ekspor CSV
+              </button>
+              <button onclick="refreshDataAttendance()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-rotate text-brand-400"></i> Refresh
+              </button>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-auto max-h-[400px] border border-slate-800 rounded-xl">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[11px] sticky top-0 z-10 border-b border-slate-800">
+                <tr>
+                  <th class="py-3 px-3">Siswa</th>
+                  <th class="py-3 px-3">Kelas</th>
+                  <th class="py-3 px-3">Jam Masuk</th>
+                  <th class="py-3 px-3 text-center">Status</th>
+                  <th class="py-3 px-3 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTableBody" class="divide-y divide-slate-800 font-normal">
+                <tr>
+                  <td colspan="5" class="text-center py-10 text-slate-500">Memuat data kehadiran...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- SUB-TAB 2: PENDAFTARAN WAJAH -->
+    <div id="subTabEnroll" class="hidden grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+      <section class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-id-card text-emerald-400"></i>
+            Pendaftaran Vektor Wajah Siswa
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Ambil sampel foto langsung dari webcam untuk diekstraksi ke 128-D facial vector.</p>
+        </div>
+
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">NISN Siswa *</label>
+              <input type="text" id="enrollNisn" placeholder="Contoh: 0081234567" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Kelas *</label>
+              <input type="text" id="enrollClass" placeholder="Contoh: X MIPA 1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Nama Lengkap *</label>
+            <input type="text" id="enrollName" placeholder="Contoh: Ahmad Fauzan" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="space-y-2 pt-2 border-t border-slate-800">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-medium text-slate-300">Pengambilan Sampel:</span>
+            <span id="enrollStatusLabel" class="text-amber-400 font-mono text-[11px]">Belum Ada Sampel</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="relative aspect-square bg-black rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+              <video id="enrollVideo" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
+              <div id="enrollCamCover" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-4 text-center gap-2">
+                <i class="fa-solid fa-camera text-slate-600 text-2xl mb-1"></i>
+                <button type="button" onclick="startEnrollCamera()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition">
+                  Nyalakan Webcam
+                </button>
+              </div>
+            </div>
+
+            <div class="relative aspect-square bg-slate-950 rounded-xl border border-slate-800 flex flex-col items-center justify-center p-3 text-center overflow-hidden">
+              <img id="enrollSnapshotImg" src="" alt="Snapshot" class="w-full h-full object-cover rounded-lg hidden">
+              <div id="enrollImgPlaceholder" class="flex flex-col items-center justify-center text-slate-600">
+                <i class="fa-solid fa-face-smile text-3xl mb-1"></i>
+                <span class="text-xs">Hasil Snapshot</span>
+              </div>
+              <div id="descriptorReadyBadge" class="hidden absolute bottom-2 left-2 right-2 bg-emerald-950/95 border border-emerald-500/50 rounded-lg p-1 text-[10px] text-emerald-300 font-mono flex items-center justify-center gap-1">
+                <i class="fa-solid fa-check-double"></i> 128-D Vektor Siap
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 pt-2">
+            <button type="button" onclick="captureAndExtractFace()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-medium flex items-center justify-center gap-2 transition">
+              <i class="fa-solid fa-camera-rotate text-brand-400"></i> Ambil & Ekstrak Wajah
+            </button>
+            <button type="button" onclick="triggerNativeEnrollCapture()" title="Gunakan Kamera Perangkat jika webcam terblokir" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-brand-400 text-xs font-medium transition">
+              <i class="fa-solid fa-camera"></i>
+            </button>
+            <button type="button" onclick="submitNewStudent()" id="btnSaveStudent" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition disabled:opacity-50">
+              <i class="fa-solid fa-floppy-disk"></i> Simpan Siswa
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white">Daftar Siswa Terdaftar</h3>
+            <p class="text-xs text-slate-400">Basis data siswa yang tersimpan di Google Sheets.</p>
+          </div>
+          <span id="enrollTotalCountBadge" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 text-xs font-mono font-bold">0 Siswa</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto max-h-[480px] border border-slate-800 rounded-xl">
+          <div id="enrolledStudentsContainer" class="divide-y divide-slate-800"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- SUB-TAB 3: KELOLA CAROUSEL 3D -->
+    <div id="subTabCarouselAdmin" class="hidden grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+      <section class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-brand-400"></i> Tambah Slide Carousel 3D
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Kelola gambar galeri yang ditampilkan di beranda.</p>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Sumber Gambar</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="setSlideSource('url')" id="btnSourceUrl" class="py-2 rounded-xl bg-brand-600 text-white font-medium border border-brand-500">Gunakan Link URL</button>
+              <button type="button" onclick="setSlideSource('upload')" id="btnSourceUpload" class="py-2 rounded-xl bg-slate-800 text-slate-400 font-medium border border-slate-700">Upload ke Drive</button>
+            </div>
+          </div>
+
+          <div id="inputUrlGroup">
+            <label class="block font-medium text-slate-300 mb-1">URL Gambar *</label>
+            <input type="text" id="slideImageUrl" oninput="previewSlideImage(this.value)" placeholder="https://images.unsplash.com/..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none">
+          </div>
+
+          <div id="inputUploadGroup" class="hidden">
+            <label class="block font-medium text-slate-300 mb-1">Pilih File Gambar (JPG/PNG/WEBP) *</label>
+            <input type="file" id="slideFileInput" onchange="handleSlideFileSelect(event)" accept="image/*" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-slate-300 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-slate-800 file:text-white file:text-xs">
+          </div>
+
+          <div class="aspect-video bg-black rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center">
+            <img id="slideImgPreview" src="" alt="Preview" class="w-full h-full object-cover hidden">
+            <span id="slideImgPlaceholder" class="text-slate-600">Pratinjau Gambar</span>
+          </div>
+
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Judul Slide</label>
+            <input type="text" id="slideTitle" placeholder="Contoh: Gedung Laboratorium Komputer" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Deskripsi Singkat</label>
+            <textarea id="slideDesc" rows="2" placeholder="Deskripsi gambar..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none"></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-medium text-slate-300 mb-1">Nomor Urutan</label>
+              <input type="number" id="slideOrder" value="1" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-medium text-slate-300 mb-1">Tautan Link (Opsional)</label>
+              <input type="text" id="slideLink" placeholder="#fitur" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none">
+            </div>
+          </div>
+
+          <button onclick="submitNewSlide()" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium shadow-lg shadow-brand-500/20 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-plus"></i> Simpan Slide ke Database
+          </button>
+        </div>
+      </section>
+
+      <section class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+        <h3 class="text-base font-bold text-white">Daftar Slide Aktif</h3>
+        <div class="flex-1 overflow-y-auto max-h-[500px] border border-slate-800 rounded-xl">
+          <div id="carouselSlidesList" class="divide-y divide-slate-800"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- SUB-TAB 4: PENGATURAN & INTEGRASI GITHUB PAGES API -->
+    <div id="subTabSettings" class="hidden grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+      
+      <!-- Card Integrasi GitHub Pages & Google Apps Script API -->
+      <section class="lg:col-span-12 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-brands fa-github text-brand-400"></i> Integrasi GitHub Pages & Google Apps Script API
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Hubungkan antarmuka GitHub Pages dengan Google Spreadsheet & Google Drive Anda.</p>
+          </div>
+          <div id="apiStatusBadge" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-xs font-mono text-slate-300 border border-slate-700">
+            <span class="w-2 h-2 rounded-full bg-slate-500"></span> Belum Terhubung
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+          <div class="lg:col-span-8 space-y-2 text-xs">
+            <label class="block font-medium text-slate-300">URL Web App Google Apps Script (Exec URL) *</label>
+            <div class="flex gap-2">
+              <input type="text" id="inputGasApiUrl" placeholder="https://script.google.com/macros/s/AKfycbx.../exec" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono text-xs placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-500">
+              <button onclick="saveAndTestGasApiUrl()" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-plug"></i> Simpan & Tes
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-500">URL didapatkan saat Anda melakukan <strong>Deploy > New Deployment > Web App > Who has access: Anyone</strong> pada Google Apps Script.</p>
+          </div>
+
+          <div class="lg:col-span-4 bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-[11px] space-y-1 text-slate-300">
+            <span class="font-bold text-brand-400 block"><i class="fa-solid fa-circle-info mr-1"></i> Keunggulan Deploy GitHub:</span>
+            <span>✓ Kamera laptop/HP langsung aktif tanpa blokir iframe sandbox.</span><br>
+            <span>✓ Data presensi tetap tersinkronisasi realtime ke Google Sheets.</span><br>
+            <span>✓ Hosting gratis, uptime 99.9%, dan siap dibagikan ke siswa/guru.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pengaturan Lokasi Google Maps -->
+      <section class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-map-pin text-rose-400"></i> Pengaturan Lokasi Google Maps
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Lokasi ini ditampilkan pada section peta interaktif sebelum footer.</p>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Alamat Lengkap Sekolah *</label>
+            <textarea id="setLocAddress" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none"></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-medium text-slate-300 mb-1">Latitude *</label>
+              <input type="text" id="setLocLat" placeholder="-6.4883" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-medium text-slate-300 mb-1">Longitude *</label>
+              <input type="text" id="setLocLng" placeholder="106.8778" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none">
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="setLocStatus" class="rounded bg-slate-800 border-slate-700 text-brand-600 focus:ring-0">
+            <label for="setLocStatus" class="text-slate-300">Tampilkan Google Maps di Beranda</label>
+          </div>
+
+          <button onclick="saveLocationConfig()" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium shadow-lg transition">
+            Simpan Pengaturan Lokasi
+          </button>
+        </div>
+      </section>
+
+      <!-- Pengaturan Website & Footer -->
+      <section class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-globe text-brand-400"></i> Pengaturan Footer & Kontak
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Informasi kontak yang tertera di bagian footer situs.</p>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Nama Sekolah / Instansi</label>
+            <input type="text" id="setSchoolName" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">WhatsApp Sekolah</label>
+            <input type="text" id="setSchoolWa" placeholder="081234567890" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Email Resmi</label>
+            <input type="email" id="setSchoolEmail" placeholder="info@sekolah.sch.id" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Teks Copyright</label>
+            <input type="text" id="setSchoolCopyright" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none">
+          </div>
+
+          <button onclick="saveWebConfig()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-medium transition">
+            Simpan Konfigurasi Web
+          </button>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+
+  <footer id="footerSection" class="bg-slate-950 border-t border-slate-900 py-10 px-4 mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-400 to-brand-600 flex items-center justify-center text-white">
+          <i class="fa-solid fa-camera-viewfinder text-sm"></i>
+        </div>
+        <div>
+          <span class="font-bold text-sm text-white">FaceAttend AI</span>
+          <p id="footerSchoolName" class="text-xs text-slate-400">SMA Negeri Unggulan Saung Digital</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4 text-xs text-slate-400">
+        <span id="footerWaText"><i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i> 081234567890</span>
+        <span id="footerEmailText"><i class="fa-solid fa-envelope text-blue-400 mr-1"></i> info@sekolah.sch.id</span>
+      </div>
+
+      <div class="text-center md:text-right">
+        <p id="footerCopyrightText" class="text-xs text-slate-500">© 2026 FaceAttend AI — Seluruh Hak Cipta Dilindungi.</p>
+        <p class="text-[10px] text-slate-600 mt-0.5">Developed by <span class="text-brand-400">SaungDigital</span></p>
+      </div>
+
+    </div>
+  </footer>
+
+  <div id="loginModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-lock text-brand-400"></i> Masuk Administrator
+        </h3>
+        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form onsubmit="handleLoginSubmit(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Username</label>
+          <input type="text" id="loginUsername" placeholder="admin" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Kata Sandi</label>
+          <div class="relative">
+            <input type="password" id="loginPassword" placeholder="••••••" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 pr-9 text-white focus:outline-none">
+            <button type="button" onclick="togglePasswordVisibility('loginPassword', 'loginEyeIcon')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+              <i class="fa-solid fa-eye" id="loginEyeIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="btnLoginSubmit" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium shadow-lg shadow-brand-500/20 transition">
+          Masuk ke Dashboard
+        </button>
+
+        <p class="text-[11px] text-center text-slate-500 pt-1">
+          Kredensial Bawaan: <span class="font-mono text-slate-400">admin / 123</span>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <div id="toastNotificationBox" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Hidden Native Camera Inputs (Bypass/Fallback for low-end mobile) -->
+  <input type="file" id="nativeScannerInput" accept="image/*" capture="user" class="hidden" onchange="handleNativeScannerFile(event)">
+  <input type="file" id="nativeEnrollInput" accept="image/*" capture="user" class="hidden" onchange="handleNativeEnrollFile(event)">
+
+  <script>
+    /**
+     * STATE MANAGEMENT & HYBRID GITHUB PAGES / GAS API BRIDGE
+     */
+    const isGasRuntime = typeof google !== 'undefined' && google.script && typeof google.script.run !== 'undefined';
+    const isGitHubPages = window.location.hostname.includes('github.io') || window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+
+    const STATE = {
+      isGas: isGasRuntime,
+      isGitHub: isGitHubPages,
+      gasApiUrl: localStorage.getItem('faceattend_gas_api_url') || '',
+      currentUser: null,
+      theme: 'dark',
+      modelsLoaded: false,
+      cameraActive: false,
+      cameraStream: null,
+      enrollStream: null,
+      scannerInterval: null,
+      isProcessingFrame: false,
+      faceMatcher: null,
+      students: [],
+      attendances: [],
+      attendedTodaySet: new Set(),
+      carouselSlides: [],
+      activeSlideIndex: 0,
+      carouselTimer: null,
+      slideSourceType: 'url',
+      uploadedSlideBase64: '',
+      enrollExtractedDescriptor: null,
+      enrollExtractedPhoto: null,
+      audioCtx: null,
+      location: {
+        address: 'Jl. Raya Pahlawan No. 123, Citeureup, Bogor, Jawa Barat',
+        latitude: -6.4883,
+        longitude: 106.8778,
+        status: true
+      },
+      settings: {
+        schoolName: 'SMA Negeri Unggulan Saung Digital',
+        whatsapp: '081234567890',
+        email: 'info@sekolah.sch.id',
+        copyright: '© 2026 FaceAttend AI — Seluruh Hak Cipta Dilindungi.'
+      }
+    };
+
+    /**
+     * UNIFIED API BRIDGE: Berkomunikasi via google.script.run ATAU fetch() ke GAS Web App API
+     */
+    async function callBackendApi(action, payload = {}) {
+      // 1. Jika berjalan di dalam lingkungan Google Apps Script
+      if (STATE.isGas) {
+        return new Promise((resolve) => {
+          if (action === 'getStudents') google.script.run.withSuccessHandler(resolve).getStudentsList();
+          else if (action === 'getAttendancesToday') google.script.run.withSuccessHandler(resolve).getAttendancesToday(payload.date);
+          else if (action === 'getCarousel') google.script.run.withSuccessHandler(resolve).getCarouselSlides();
+          else if (action === 'getLocation') google.script.run.withSuccessHandler(resolve).getLocationSettings();
+          else if (action === 'getSettings') google.script.run.withSuccessHandler(resolve).getAppSettings();
+          else if (action === 'login') google.script.run.withSuccessHandler(resolve).loginUser(payload.username, payload.password);
+          else if (action === 'saveStudent') google.script.run.withSuccessHandler(resolve).saveNewStudent(payload.student);
+          else if (action === 'deleteStudent') google.script.run.withSuccessHandler(resolve).deleteStudent(payload.studentId);
+          else if (action === 'recordAttendance') google.script.run.withSuccessHandler(resolve).recordAttendance(payload.studentId);
+          else if (action === 'saveCarousel') google.script.run.withSuccessHandler(resolve).saveCarouselSlide(payload.slide);
+          else if (action === 'deleteCarousel') google.script.run.withSuccessHandler(resolve).deleteCarouselSlide(payload.slideId);
+          else if (action === 'saveLocation') google.script.run.withSuccessHandler(resolve).saveLocationSettings(payload.location);
+          else if (action === 'saveSettings') google.script.run.withSuccessHandler(resolve).saveAppSettings(payload.settings);
+          else resolve({ success: false, message: 'Fungsi GAS tidak tersedia' });
+        });
+      }
+
+      // 2. Jika berjalan di GitHub Pages dengan URL Web App GAS yang dikonfigurasi
+      if (STATE.gasApiUrl) {
+        try {
+          const bodyPayload = JSON.stringify({ action: action, ...payload });
+          const res = await fetch(STATE.gasApiUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: bodyPayload
+          });
+          return await res.json();
+        } catch (err) {
+          console.warn('API Fetch error:', err);
+          return { success: false, message: 'Gagal menghubungi Google Apps Script API: ' + err.message };
+        }
+      }
+
+      // 3. Mode Fallback Safe Preview (Standalone)
+      return { success: false, isDemo: true, message: 'Mode Standalone (Demo)' };
+    }
+
+    function playVerificationChime() {
+      try {
+        if (!STATE.audioCtx) {
+          STATE.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (STATE.audioCtx.state === 'suspended') {
+          STATE.audioCtx.resume();
+        }
+        const now = STATE.audioCtx.currentTime;
+        const osc = STATE.audioCtx.createOscillator();
+        const gain = STATE.audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+        osc.connect(gain);
+        gain.connect(STATE.audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.4);
+      } catch (e) {
+        console.warn('Audio chime warning:', e);
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const box = document.getElementById('toastNotificationBox');
+      const toast = document.createElement('div');
+      const styles = {
+        success: 'bg-emerald-950/90 border-emerald-500/80 text-emerald-200',
+        error: 'bg-rose-950/90 border-rose-500/80 text-rose-200',
+        info: 'bg-slate-900/95 border-brand-500/80 text-slate-200'
+      };
+      const icons = {
+        success: 'fa-circle-check text-emerald-400',
+        error: 'fa-circle-exclamation text-rose-400',
+        info: 'fa-circle-info text-brand-400'
+      };
+
+      toast.className = `flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs shadow-2xl backdrop-blur-md pointer-events-auto transition-all transform translate-x-8 opacity-0 ${styles[type] || styles.info}`;
+      toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${message}</span>`;
+      box.appendChild(toast);
+
+      requestAnimationFrame(() => toast.classList.remove('translate-x-8', 'opacity-0'));
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-8');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem('faceattend_theme') || 'dark';
+      STATE.theme = saved;
+      applyTheme(saved);
+    }
+
+    function toggleTheme() {
+      const newTheme = STATE.theme === 'dark' ? 'light' : 'dark';
+      STATE.theme = newTheme;
+      localStorage.setItem('faceattend_theme', newTheme);
+      applyTheme(newTheme);
+    }
+
+    function applyTheme(theme) {
+      const html = document.documentElement;
+      const icon = document.getElementById('themeIcon');
+      if (theme === 'dark') {
+        html.classList.add('dark');
+        icon.className = 'fa-solid fa-sun';
+      } else {
+        html.classList.remove('dark');
+        icon.className = 'fa-solid fa-moon';
+      }
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fa-solid fa-eye-slash text-brand-400';
+      } else {
+        input.type = 'password';
+        icon.className = 'fa-solid fa-eye';
+      }
+    }
+
+    async function loadFaceModels() {
+      const label = document.getElementById('aiStatusLabel');
+      try {
+        label.textContent = 'Memuat Model AI...';
+        if (typeof faceapi === 'undefined') {
+          throw new Error('face-api.js library belum siap atau terblokir');
+        }
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        STATE.modelsLoaded = true;
+        label.textContent = 'AI Ready (128-D)';
+        label.className = 'text-emerald-400 font-mono';
+      } catch (err) {
+        console.error('Face-API model load error:', err);
+        label.textContent = 'Gagal Muat AI';
+        label.className = 'text-rose-400 font-mono';
+        showToast('Gagal mengunduh model neural network wajah.', 'error');
+      }
+    }
+
+    function initScrollObserver() {
+      const cards = document.querySelectorAll('.scroll-reveal-card');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+          }
+        });
+      }, { threshold: 0.12 });
+      cards.forEach(card => observer.observe(card));
+    }
+
+    function initHeroTilt() {
+      const card = document.getElementById('heroTiltCard');
+      if (!card) return;
+
+      card.addEventListener('mousemove', (e) => {
+        if (window.innerWidth < 1024) return;
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const rotateX = ((y - centerY) / centerY) * -5;
+        const rotateY = ((x - centerX) / centerX) * 5;
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+      });
+
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+      });
+    }
+
+    function render3DCarousel() {
+      const stage = document.getElementById('carouselStage');
+      const dotsBox = document.getElementById('carouselDots');
+      if (!stage || STATE.carouselSlides.length === 0) return;
+
+      stage.innerHTML = '';
+      dotsBox.innerHTML = '';
+
+      STATE.carouselSlides.forEach((slide, idx) => {
+        const item = document.createElement('div');
+        item.className = 'carousel-item-card';
+        item.id = `carouselSlide_${idx}`;
+
+        item.innerHTML = `
+          <div class="relative w-full h-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl group cursor-pointer" onclick="goToCarouselSlide(${idx})">
+            <img src="${slide.imageUrl}" alt="${slide.title}" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-5">
+              <h4 class="text-base sm:text-lg font-bold text-white drop-shadow">${slide.title}</h4>
+              <p class="text-xs text-slate-300 line-clamp-2 mt-1 drop-shadow">${slide.description}</p>
+            </div>
+          </div>
+        `;
+        stage.appendChild(item);
+
+        const dot = document.createElement('button');
+        dot.className = `w-2.5 h-2.5 rounded-full transition-all ${idx === STATE.activeSlideIndex ? 'bg-brand-400 w-7' : 'bg-slate-700'}`;
+        dot.onclick = () => goToCarouselSlide(idx);
+        dotsBox.appendChild(dot);
+      });
+
+      update3DCarouselClasses();
+      startCarouselAutoplay();
+    }
+
+    function update3DCarouselClasses() {
+      const total = STATE.carouselSlides.length;
+      if (total === 0) return;
+
+      const active = STATE.activeSlideIndex;
+      const prev = (active - 1 + total) % total;
+      const next = (active + 1) % total;
+
+      for (let i = 0; i < total; i++) {
+        const el = document.getElementById(`carouselSlide_${i}`);
+        if (!el) continue;
+        el.className = 'carousel-item-card';
+
+        if (i === active) el.classList.add('card-pos-active');
+        else if (i === prev) el.classList.add('card-pos-prev');
+        else if (i === next) el.classList.add('card-pos-next');
+        else el.classList.add('card-pos-hidden');
+      }
+
+      const dots = document.getElementById('carouselDots').children;
+      for (let j = 0; j < dots.length; j++) {
+        dots[j].className = `w-2.5 h-2.5 rounded-full transition-all ${j === active ? 'bg-brand-400 w-7' : 'bg-slate-700'}`;
+      }
+    }
+
+    function nextCarouselSlide() {
+      if (STATE.carouselSlides.length === 0) return;
+      STATE.activeSlideIndex = (STATE.activeSlideIndex + 1) % STATE.carouselSlides.length;
+      update3DCarouselClasses();
+    }
+
+    function prevCarouselSlide() {
+      if (STATE.carouselSlides.length === 0) return;
+      STATE.activeSlideIndex = (STATE.activeSlideIndex - 1 + STATE.carouselSlides.length) % STATE.carouselSlides.length;
+      update3DCarouselClasses();
+    }
+
+    function goToCarouselSlide(idx) {
+      STATE.activeSlideIndex = idx;
+      update3DCarouselClasses();
+    }
+
+    function startCarouselAutoplay() {
+      if (STATE.carouselTimer) clearInterval(STATE.carouselTimer);
+      STATE.carouselTimer = setInterval(nextCarouselSlide, 4500);
+    }
+
+    function updateGoogleMapsIframe() {
+      const iframe = document.getElementById('mapsIframe');
+      const placeholder = document.getElementById('mapsPlaceholder');
+      const addressText = document.getElementById('mapsAddressText');
+      const directLink = document.getElementById('mapsDirectLink');
+
+      const loc = STATE.location || {};
+      const lat = typeof loc.latitude === 'number' ? loc.latitude : -6.4883;
+      const lng = typeof loc.longitude === 'number' ? loc.longitude : 106.8778;
+      const addr = loc.address || 'Pusat Informasi Kampus Sekolah';
+
+      if (addressText) addressText.textContent = addr;
+      
+      const queryParam = encodeURIComponent(lat + ',' + lng);
+      if (directLink) {
+        directLink.href = 'https://www.google.com/maps?q=' + queryParam;
+      }
+
+      if (iframe && placeholder) {
+        if (loc.status) {
+          iframe.classList.remove('hidden');
+          placeholder.classList.add('hidden');
+          iframe.src = 'https://maps.google.com/maps?q=' + queryParam + '&hl=id&z=15&output=embed';
+        } else {
+          iframe.classList.add('hidden');
+          placeholder.classList.remove('hidden');
+          iframe.removeAttribute('src');
+        }
+      }
+    }
+
+    function navigateToSection(sectionId) {
+      document.getElementById('viewLanding').classList.remove('hidden');
+      document.getElementById('viewApp').classList.add('hidden');
+      document.getElementById('viewApp').classList.remove('flex');
+      stopScannerCamera();
+      
+      const el = document.getElementById(sectionId);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function openAppTab(tabName) {
+      document.getElementById('viewLanding').classList.add('hidden');
+      document.getElementById('viewApp').classList.remove('hidden');
+      document.getElementById('viewApp').classList.add('flex');
+      switchAppTab(tabName);
+    }
+
+    function switchAppTab(tabName) {
+      if (tabName !== 'presensi' && STATE.cameraActive) {
+        stopScannerCamera();
+      }
+      if (tabName !== 'enroll' && STATE.enrollStream) {
+        stopEnrollCamera();
+      }
+
+      const tabs = ['presensi', 'enroll', 'carouselAdmin', 'settings'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const sub = document.getElementById(`subTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (t === tabName) {
+          if (btn) btn.className = 'px-3.5 py-1.5 rounded-lg flex items-center gap-2 bg-brand-600 text-white shadow transition';
+          if (sub) {
+            sub.classList.remove('hidden');
+            sub.classList.add('grid');
+          }
+        } else {
+          if (btn) btn.className = 'px-3.5 py-1.5 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white transition';
+          if (sub) {
+            sub.classList.add('hidden');
+            sub.classList.remove('grid');
+          }
+        }
+      });
+
+      if (tabName === 'presensi') renderAttendanceTable();
+      else if (tabName === 'enroll') renderEnrolledStudents();
+      else if (tabName === 'carouselAdmin') renderAdminCarouselList();
+      else if (tabName === 'settings') loadSettingsToForm();
+    }
+
+    async function populateCameraDevices() {
+      const select = document.getElementById('selectCameraDevice');
+      select.innerHTML = '<option value="">Pilih Sumber Kamera...</option>';
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        videoDevices.forEach((dev, idx) => {
+          const opt = document.createElement('option');
+          opt.value = dev.deviceId;
+          opt.textContent = dev.label || `Kamera ${idx + 1}`;
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        console.warn('Enumeration error:', err);
+      }
+    }
+
+    async function startScannerCamera() {
+      if (!STATE.modelsLoaded) {
+        showToast('Model AI sedang dimuat, harap tunggu sejenak.', 'info');
+        return;
+      }
+      stopEnrollCamera();
+
+      const video = document.getElementById('videoScanner');
+      const cover = document.getElementById('cameraCover');
+      const laser = document.getElementById('scannerLaser');
+      const select = document.getElementById('selectCameraDevice');
+
+      try {
+        let stream = null;
+        try {
+          const constraints = {
+            video: select.value 
+              ? { deviceId: { exact: select.value }, width: { ideal: 640 }, height: { ideal: 480 } }
+              : { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+          };
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e1) {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+
+        STATE.cameraStream = stream;
+        video.srcObject = STATE.cameraStream;
+        await video.play();
+
+        STATE.cameraActive = true;
+        cover.classList.add('hidden');
+        laser.classList.remove('hidden');
+        document.getElementById('btnCamText').textContent = 'Hentikan';
+        document.getElementById('cameraStatusDot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+
+        startDetectionLoop();
+        await populateCameraDevices();
+        showToast('Kamera aktif (HTTPS Native).', 'success');
+      } catch (err) {
+        console.error('Camera access error:', err);
+        showToast('Akses kamera ditolak oleh browser. Pastikan izin kamera aktif pada address bar.', 'error');
+      }
+    }
+
+    function stopScannerCamera() {
+      if (STATE.cameraStream) {
+        STATE.cameraStream.getTracks().forEach(t => t.stop());
+        STATE.cameraStream = null;
+      }
+      if (STATE.scannerInterval) {
+        clearInterval(STATE.scannerInterval);
+        STATE.scannerInterval = null;
+      }
+      const video = document.getElementById('videoScanner');
+      if (video) video.srcObject = null;
+      
+      const canvas = document.getElementById('canvasOverlay');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      STATE.cameraActive = false;
+      const cover = document.getElementById('cameraCover');
+      const laser = document.getElementById('scannerLaser');
+      if (cover) cover.classList.remove('hidden');
+      if (laser) laser.classList.add('hidden');
+      const btnText = document.getElementById('btnCamText');
+      if (btnText) btnText.textContent = 'Mulai';
+      const dot = document.getElementById('cameraStatusDot');
+      if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse';
+    }
+
+    function toggleScannerCamera() {
+      if (STATE.cameraActive) stopScannerCamera();
+      else startScannerCamera();
+    }
+
+    function changeActiveCamera() {
+      if (STATE.cameraActive) {
+        stopScannerCamera();
+        startScannerCamera();
+      }
+    }
+
+    function startDetectionLoop() {
+      if (STATE.scannerInterval) clearInterval(STATE.scannerInterval);
+      const video = document.getElementById('videoScanner');
+      const canvas = document.getElementById('canvasOverlay');
+
+      STATE.scannerInterval = setInterval(async () => {
+        if (!STATE.cameraActive || STATE.isProcessingFrame || video.paused || video.ended) return;
+        STATE.isProcessingFrame = true;
+
+        try {
+          if (video.videoWidth === 0 || video.videoHeight === 0) {
+            STATE.isProcessingFrame = false;
+            return;
+          }
+
+          if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+          }
+
+          const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+          const detections = await faceapi.detectAllFaces(video, options)
+            .withFaceLandmarks()
+            .withFaceDescriptors();
+
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          if (detections.length > 0 && STATE.faceMatcher) {
+            detections.forEach(det => {
+              const bestMatch = STATE.faceMatcher.findBestMatch(det.descriptor);
+              const box = det.detection.box;
+              const isMatch = bestMatch.label !== 'unknown';
+              const student = isMatch ? STATE.students.find(s => s.id === bestMatch.label) : null;
+
+              const label = student ? `${student.name} (${Math.round((1 - bestMatch.distance) * 100)}%)` : 'Wajah Tidak Dikenal';
+              const color = student ? '#10b981' : '#f43f5e';
+
+              ctx.strokeStyle = color;
+              ctx.lineWidth = 3;
+              ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+              ctx.fillStyle = color;
+              ctx.font = 'bold 12px Inter, sans-serif';
+              const textWidth = ctx.measureText(label).width;
+              ctx.fillRect(box.x, box.y > 20 ? box.y - 20 : box.y, textWidth + 8, 20);
+
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText(label, box.x + 4, box.y > 20 ? box.y - 5 : box.y + 14);
+
+              if (student) {
+                processAttendanceHit(student);
+              }
+            });
+          }
+        } catch (err) {
+          console.warn('Frame detection warning:', err);
+        } finally {
+          STATE.isProcessingFrame = false;
+        }
+      }, 350);
+    }
+
+    async function processAttendanceHit(student) {
+      if (STATE.attendedTodaySet.has(student.id)) return;
+      STATE.attendedTodaySet.add(student.id);
+
+      playVerificationChime();
+      showVerificationToast(student);
+
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      const dateStr = now.toISOString().split('T')[0];
+
+      const newRecord = {
+        id: 'att_' + Date.now(),
+        student_id: student.id,
+        nisn: student.nisn,
+        name: student.name,
+        class_name: student.class_name,
+        date: dateStr,
+        time: timeStr,
+        status: 'Hadir'
+      };
+
+      STATE.attendances.push(newRecord);
+      renderAttendanceTable();
+
+      // Sinkronkan presensi ke Google Sheets via unified API bridge
+      const res = await callBackendApi('recordAttendance', { studentId: student.id });
+      if (res && res.alreadyAttended) {
+        console.log('Siswa sudah tercatat di server hari ini.');
+      }
+    }
+
+    function showVerificationToast(student) {
+      const toast = document.getElementById('instantToast');
+      const name = document.getElementById('toastStudentName');
+      const meta = document.getElementById('toastStudentMeta');
+      const photo = document.getElementById('toastStudentPhoto');
+      const fallback = document.getElementById('toastStudentIcon');
+
+      name.textContent = student.name;
+      meta.textContent = `NISN: ${student.nisn} | Kelas: ${student.class_name}`;
+
+      if (student.photo_url) {
+        photo.src = student.photo_url;
+        photo.classList.remove('hidden');
+        fallback.classList.add('hidden');
+      } else {
+        photo.classList.add('hidden');
+        fallback.classList.remove('hidden');
+      }
+
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3500);
+    }
+
+    function renderAttendanceTable() {
+      const tbody = document.getElementById('attendanceTableBody');
+      const filterClass = document.getElementById('filterClassSelect').value;
+      const searchKey = document.getElementById('searchAttendanceInput').value.toLowerCase().trim();
+
+      let filtered = STATE.students.filter(s => {
+        const matchClass = (filterClass === 'ALL' || s.class_name === filterClass);
+        const matchSearch = (!searchKey || s.name.toLowerCase().includes(searchKey) || s.nisn.includes(searchKey));
+        return matchClass && matchSearch;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-500">Tidak ada siswa yang sesuai kriteria.</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map(student => {
+          const att = STATE.attendances.find(a => a.student_id === student.id);
+          const isHadir = Boolean(att);
+          return `
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center flex-shrink-0">
+                    ${student.photo_url ? `<img src="${student.photo_url}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-user text-slate-500 text-xs"></i>`}
+                  </div>
+                  <div>
+                    <div class="font-semibold text-slate-200">${student.name}</div>
+                    <div class="text-[10px] text-slate-500 font-mono">NISN: ${student.nisn}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 px-3 text-slate-300 font-medium">${student.class_name}</td>
+              <td class="py-3 px-3 font-mono text-slate-300">${isHadir ? att.time : '-'}</td>
+              <td class="py-3 px-3 text-center">
+                ${isHadir 
+                  ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Hadir</span>`
+                  : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">Belum Hadir</span>`
+                }
+              </td>
+              <td class="py-3 px-3 text-center">
+                ${!isHadir 
+                  ? `<button onclick="manualCheckInStudent('${student.id}')" class="px-2 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30 text-[10px]">Absen</button>`
+                  : `<span class="text-slate-600 text-xs">-</span>`
+                }
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      const total = STATE.students.length;
+      const attended = STATE.attendances.length;
+      const absent = Math.max(0, total - attended);
+
+      document.getElementById('statTotalStudents').textContent = total;
+      document.getElementById('statAttendedCount').textContent = attended;
+      document.getElementById('statAbsentCount').textContent = absent;
+    }
+
+    function manualCheckInStudent(studentId) {
+      const student = STATE.students.find(s => s.id === studentId);
+      if (student) {
+        processAttendanceHit(student);
+        showToast(`Presensi manual dicatat: ${student.name}`, 'success');
+      }
+    }
+
+    function exportAttendanceCSV() {
+      if (STATE.students.length === 0) {
+        showToast('Tidak ada data siswa untuk diekspor.', 'info');
+        return;
+      }
+      let csv = 'NISN,Nama Siswa,Kelas,Tanggal,Jam Hadir,Status\n';
+      const today = new Date().toISOString().split('T')[0];
+
+      STATE.students.forEach(s => {
+        const att = STATE.attendances.find(a => a.student_id === s.id);
+        const time = att ? att.time : '-';
+        const status = att ? 'Hadir' : 'Belum Hadir';
+        csv += `"${s.nisn}","${s.name}","${s.class_name}","${today}","${time}","${status}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Presensi_Wajah_${today}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('File CSV presensi berhasil diunduh.', 'success');
+    }
+
+    async function refreshDataAttendance() {
+      showToast('Menyinkronkan data presensi...', 'info');
+      await fetchInitialData();
+      showToast('Data kehadiran diperbarui.', 'success');
+    }
+
+    async function startEnrollCamera() {
+      if (!STATE.modelsLoaded) {
+        showToast('Model AI sedang dimuat, harap tunggu sejenak.', 'info');
+        return;
+      }
+      stopScannerCamera();
+
+      const video = document.getElementById('enrollVideo');
+      const cover = document.getElementById('enrollCamCover');
+
+      try {
+        let stream = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+          });
+        } catch (e1) {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+
+        STATE.enrollStream = stream;
+        video.srcObject = STATE.enrollStream;
+        await video.play();
+        cover.classList.add('hidden');
+      } catch (err) {
+        console.warn('Enroll camera error:', err);
+        showToast('Gagal mengakses kamera. Pastikan izin kamera telah diberikan.', 'error');
+      }
+    }
+
+    function stopEnrollCamera() {
+      if (STATE.enrollStream) {
+        STATE.enrollStream.getTracks().forEach(t => t.stop());
+        STATE.enrollStream = null;
+      }
+      const video = document.getElementById('enrollVideo');
+      if (video) video.srcObject = null;
+      const cover = document.getElementById('enrollCamCover');
+      if (cover) cover.classList.remove('hidden');
+    }
+
+    async function captureAndExtractFace() {
+      const video = document.getElementById('enrollVideo');
+      const statusLabel = document.getElementById('enrollStatusLabel');
+      const badge = document.getElementById('descriptorReadyBadge');
+      const snapshot = document.getElementById('enrollSnapshotImg');
+      const placeholder = document.getElementById('enrollImgPlaceholder');
+
+      if (!video.srcObject || video.paused || video.ended) {
+        showToast('Nyalakan kamera pendaftaran terlebih dahulu.', 'info');
+        return;
+      }
+
+      statusLabel.textContent = 'Mengekstraksi fitur AI...';
+      statusLabel.className = 'text-blue-400 font-mono text-[11px] animate-pulse';
+
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 480;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const detection = await faceapi.detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+
+        if (!detection) {
+          statusLabel.textContent = 'Wajah Tidak Terdeteksi!';
+          statusLabel.className = 'text-rose-400 font-mono text-[11px]';
+          badge.classList.add('hidden');
+          showToast('Wajah tidak terdeteksi. Posisikan wajah tegak lurus dengan pencahayaan terang.', 'error');
+          return;
+        }
+
+        STATE.enrollExtractedDescriptor = Array.from(detection.descriptor);
+        STATE.enrollExtractedPhoto = canvas.toDataURL('image/jpeg', 0.85);
+
+        snapshot.src = STATE.enrollExtractedPhoto;
+        snapshot.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        badge.classList.remove('hidden');
+
+        statusLabel.textContent = '128-D Vektor Wajah Siap!';
+        statusLabel.className = 'text-emerald-400 font-mono text-[11px]';
+        showToast('Vektor 128-D wajah berhasil diekstraksi!', 'success');
+      } catch (err) {
+        console.error('Extraction error:', err);
+        statusLabel.textContent = 'Ekstraksi Gagal';
+        statusLabel.className = 'text-rose-400 font-mono text-[11px]';
+      }
+    }
+
+    function triggerNativeScannerCapture() {
+      document.getElementById('nativeScannerInput').click();
+    }
+
+    function triggerNativeEnrollCapture() {
+      document.getElementById('nativeEnrollInput').click();
+    }
+
+    async function handleNativeScannerFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      showToast('Memproses foto pemindaian wajah...', 'info');
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = async () => {
+          if (!STATE.faceMatcher) {
+            showToast('Basis data wajah belum siap atau kosong.', 'error');
+            return;
+          }
+
+          try {
+            const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+              .withFaceLandmarks()
+              .withFaceDescriptor();
+
+            if (!detection) {
+              showToast('Wajah tidak terdeteksi pada foto. Silakan coba lagi dengan cahaya terang.', 'error');
+              return;
+            }
+
+            const bestMatch = STATE.faceMatcher.findBestMatch(detection.descriptor);
+            if (bestMatch.label !== 'unknown') {
+              const student = STATE.students.find(s => s.id === bestMatch.label);
+              if (student) processAttendanceHit(student);
+            } else {
+              showToast('Wajah tidak cocok dengan data siswa mana pun.', 'error');
+            }
+          } catch (err) {
+            console.error('Scan processing error:', err);
+            showToast('Gagal memproses foto presensi.', 'error');
+          }
+        };
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    }
+
+    async function handleNativeEnrollFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const statusLabel = document.getElementById('enrollStatusLabel');
+      const badge = document.getElementById('descriptorReadyBadge');
+      const snapshot = document.getElementById('enrollSnapshotImg');
+      const placeholder = document.getElementById('enrollImgPlaceholder');
+
+      statusLabel.textContent = 'Mengekstraksi fitur AI dari foto...';
+      statusLabel.className = 'text-blue-400 font-mono text-[11px] animate-pulse';
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = async () => {
+          try {
+            const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+              .withFaceLandmarks()
+              .withFaceDescriptor();
+
+            if (!detection) {
+              statusLabel.textContent = 'Wajah Tidak Terdeteksi!';
+              statusLabel.className = 'text-rose-400 font-mono text-[11px]';
+              badge.classList.add('hidden');
+              showToast('Wajah tidak terdeteksi pada foto.', 'error');
+              return;
+            }
+
+            STATE.enrollExtractedDescriptor = Array.from(detection.descriptor);
+            STATE.enrollExtractedPhoto = e.target.result;
+
+            snapshot.src = STATE.enrollExtractedPhoto;
+            snapshot.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            badge.classList.remove('hidden');
+
+            statusLabel.textContent = '128-D Vektor Wajah Siap!';
+            statusLabel.className = 'text-emerald-400 font-mono text-[11px]';
+            showToast('Vektor wajah berhasil diekstraksi!', 'success');
+          } catch (err) {
+            console.error('Extraction error:', err);
+            statusLabel.textContent = 'Ekstraksi Gagal';
+            statusLabel.className = 'text-rose-400 font-mono text-[11px]';
+          }
+        };
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    }
+
+    async function submitNewStudent() {
+      const nisn = document.getElementById('enrollNisn').value.trim();
+      const name = document.getElementById('enrollName').value.trim();
+      const className = document.getElementById('enrollClass').value.trim().toUpperCase();
+
+      if (!nisn || !name || !className) {
+        showToast('Harap lengkapi NISN, Nama, dan Kelas siswa.', 'error');
+        return;
+      }
+
+      if (!STATE.enrollExtractedDescriptor) {
+        showToast('Ambil sampel foto wajah siswa terlebih dahulu.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveStudent');
+      btn.setAttribute('disabled', 'true');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+
+      const newStudent = {
+        id: 'std_' + Date.now(),
+        nisn: nisn,
+        name: name,
+        class_name: className,
+        face_descriptor: STATE.enrollExtractedDescriptor,
+        photo_url: STATE.enrollExtractedPhoto,
+        photoBase64: STATE.enrollExtractedPhoto
+      };
+
+      const res = await callBackendApi('saveStudent', { student: newStudent });
+      btn.removeAttribute('disabled');
+      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Siswa';
+
+      if (res && res.success) {
+        STATE.students.push(res.student || newStudent);
+        rebuildFaceMatcher();
+        renderEnrolledStudents();
+        renderAttendanceTable();
+        resetEnrollForm();
+        showToast(`Siswa ${name} berhasil disimpan ke database Google Sheets!`, 'success');
+      } else {
+        // Fallback simpan di memori lokal jika backend belum dikonfigurasi
+        STATE.students.push(newStudent);
+        rebuildFaceMatcher();
+        renderEnrolledStudents();
+        renderAttendanceTable();
+        resetEnrollForm();
+        showToast(`[Demo] Siswa ${name} disimpan ke memori!`, 'success');
+      }
+    }
+
+    function resetEnrollForm() {
+      document.getElementById('enrollNisn').value = '';
+      document.getElementById('enrollName').value = '';
+      document.getElementById('enrollClass').value = '';
+      document.getElementById('enrollSnapshotImg').classList.add('hidden');
+      document.getElementById('enrollImgPlaceholder').classList.remove('hidden');
+      document.getElementById('descriptorReadyBadge').classList.add('hidden');
+      document.getElementById('enrollStatusLabel').textContent = 'Tersimpan';
+      STATE.enrollExtractedDescriptor = null;
+      STATE.enrollExtractedPhoto = null;
+    }
+
+    function renderEnrolledStudents() {
+      const container = document.getElementById('enrolledStudentsContainer');
+      const badge = document.getElementById('enrollTotalCountBadge');
+      badge.textContent = `${STATE.students.length} Siswa`;
+
+      if (STATE.students.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs">Belum ada siswa yang didaftarkan.</div>`;
+        return;
+      }
+
+      container.innerHTML = STATE.students.map(s => `
+        <div class="p-3 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center flex-shrink-0">
+              ${s.photo_url ? `<img src="${s.photo_url}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-user text-slate-500"></i>`}
+            </div>
+            <div class="min-w-0">
+              <h5 class="text-xs font-bold text-white truncate">${s.name}</h5>
+              <p class="text-[11px] text-slate-400 font-mono">NISN: ${s.nisn} | Kelas: ${s.class_name}</p>
+            </div>
+          </div>
+          <button onclick="removeStudent('${s.id}')" title="Hapus Siswa" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center transition">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    async function removeStudent(studentId) {
+      await callBackendApi('deleteStudent', { studentId: studentId });
+      STATE.students = STATE.students.filter(s => s.id !== studentId);
+      rebuildFaceMatcher();
+      renderEnrolledStudents();
+      renderAttendanceTable();
+      showToast('Siswa berhasil dihapus dari database.', 'info');
+    }
+
+    function rebuildFaceMatcher() {
+      const labeled = [];
+      STATE.students.forEach(s => {
+        if (s.face_descriptor && Array.isArray(s.face_descriptor) && s.face_descriptor.length === 128) {
+          try {
+            const arr = new Float32Array(s.face_descriptor);
+            labeled.push(new faceapi.LabeledFaceDescriptors(s.id, [arr]));
+          } catch (e) {
+            console.warn('Descriptor array invalid for:', s.name);
+          }
+        }
+      });
+
+      const tol = parseFloat(document.getElementById('cameraTolerance')?.value || '0.52');
+      if (labeled.length > 0) {
+        STATE.faceMatcher = new faceapi.FaceMatcher(labeled, tol);
+        document.getElementById('totalEnrolledBadge').textContent = `${labeled.length} Wajah`;
+      } else {
+        STATE.faceMatcher = null;
+        document.getElementById('totalEnrolledBadge').textContent = '0 Wajah';
+      }
+    }
+
+    function setSlideSource(type) {
+      STATE.slideSourceType = type;
+      if (type === 'url') {
+        document.getElementById('inputUrlGroup').classList.remove('hidden');
+        document.getElementById('inputUploadGroup').classList.add('hidden');
+        document.getElementById('btnSourceUrl').className = 'py-2 rounded-xl bg-brand-600 text-white font-medium border border-brand-500';
+        document.getElementById('btnSourceUpload').className = 'py-2 rounded-xl bg-slate-800 text-slate-400 font-medium border border-slate-700';
+      } else {
+        document.getElementById('inputUrlGroup').classList.add('hidden');
+        document.getElementById('inputUploadGroup').classList.remove('hidden');
+        document.getElementById('btnSourceUpload').className = 'py-2 rounded-xl bg-brand-600 text-white font-medium border border-brand-500';
+        document.getElementById('btnSourceUrl').className = 'py-2 rounded-xl bg-slate-800 text-slate-400 font-medium border border-slate-700';
+      }
+    }
+
+    function previewSlideImage(url) {
+      const img = document.getElementById('slideImgPreview');
+      const placeholder = document.getElementById('slideImgPlaceholder');
+      if (url) {
+        img.src = url;
+        img.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+      } else {
+        img.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+      }
+    }
+
+    function handleSlideFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        STATE.uploadedSlideBase64 = e.target.result;
+        previewSlideImage(STATE.uploadedSlideBase64);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function submitNewSlide() {
+      const title = document.getElementById('slideTitle').value.trim();
+      const desc = document.getElementById('slideDesc').value.trim();
+      const order = parseInt(document.getElementById('slideOrder').value) || 1;
+      const link = document.getElementById('slideLink').value.trim();
+
+      let imageUrl = '';
+      if (STATE.slideSourceType === 'url') {
+        imageUrl = document.getElementById('slideImageUrl').value.trim();
+        if (!imageUrl) {
+          showToast('Masukkan URL gambar terlebih dahulu.', 'error');
+          return;
+        }
+      } else {
+        if (!STATE.uploadedSlideBase64) {
+          showToast('Pilih file gambar untuk diupload.', 'error');
+          return;
+        }
+        imageUrl = STATE.uploadedSlideBase64;
+      }
+
+      const newSlide = {
+        id: 'slide_' + Date.now(),
+        imageSource: STATE.slideSourceType,
+        imageUrl: imageUrl,
+        photoBase64: STATE.slideSourceType === 'upload' ? STATE.uploadedSlideBase64 : '',
+        title: title || 'Fasilitas Sekolah',
+        description: desc || 'Infrastruktur cerdas terintegrasi.',
+        link: link || '#',
+        order: order,
+        status: true
+      };
+
+      await callBackendApi('saveCarousel', { slide: newSlide });
+      STATE.carouselSlides.push(newSlide);
+      render3DCarousel();
+      renderAdminCarouselList();
+      showToast('Slide carousel berhasil disimpan!', 'success');
+    }
+
+    function renderAdminCarouselList() {
+      const container = document.getElementById('carouselSlidesList');
+      if (STATE.carouselSlides.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs">Belum ada slide aktif.</div>`;
+        return;
+      }
+      container.innerHTML = STATE.carouselSlides.map(s => `
+        <div class="p-3 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition">
+          <div class="flex items-center gap-3">
+            <img src="${s.imageUrl}" class="w-14 h-10 object-cover rounded-lg border border-slate-700">
+            <div>
+              <h5 class="text-xs font-bold text-white">${s.title}</h5>
+              <p class="text-[11px] text-slate-400">Urutan: ${s.order} | Sumber: ${s.imageSource}</p>
+            </div>
+          </div>
+          <button onclick="removeCarouselSlide('${s.id}')" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center transition">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    async function removeCarouselSlide(slideId) {
+      STATE.carouselSlides = STATE.carouselSlides.filter(s => s.id !== slideId);
+      render3DCarousel();
+      renderAdminCarouselList();
+      await callBackendApi('deleteCarousel', { slideId: slideId });
+      showToast('Slide carousel telah dihapus.', 'info');
+    }
+
+    function loadSettingsToForm() {
+      document.getElementById('inputGasApiUrl').value = STATE.gasApiUrl;
+      document.getElementById('setLocAddress').value = STATE.location.address;
+      document.getElementById('setLocLat').value = STATE.location.latitude;
+      document.getElementById('setLocLng').value = STATE.location.longitude;
+      document.getElementById('setLocStatus').checked = STATE.location.status;
+
+      document.getElementById('setSchoolName').value = STATE.settings.schoolName;
+      document.getElementById('setSchoolWa').value = STATE.settings.whatsapp;
+      document.getElementById('setSchoolEmail').value = STATE.settings.email;
+      document.getElementById('setSchoolCopyright').value = STATE.settings.copyright;
+      updateApiStatusBadge();
+    }
+
+    function updateApiStatusBadge() {
+      const badge = document.getElementById('apiStatusBadge');
+      if (STATE.isGas) {
+        badge.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-xs font-mono text-emerald-400 border border-emerald-500/30';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Google Apps Script Container';
+      } else if (STATE.gasApiUrl) {
+        badge.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-xs font-mono text-emerald-400 border border-emerald-500/30';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Terhubung ke Google Sheets API';
+      } else {
+        badge.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-xs font-mono text-amber-400 border border-amber-500/30';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> Mode Standalone (Offline/Demo)';
+      }
+    }
+
+    async function saveAndTestGasApiUrl() {
+      const url = document.getElementById('inputGasApiUrl').value.trim();
+      if (!url) {
+        localStorage.removeItem('faceattend_gas_api_url');
+        STATE.gasApiUrl = '';
+        updateApiStatusBadge();
+        showToast('URL API dihapus. Berjalan dalam mode demo.', 'info');
+        return;
+      }
+
+      showToast('Menguji koneksi ke Google Apps Script API...', 'info');
+      try {
+        const testRes = await fetch(url + '?action=ping');
+        const json = await testRes.json();
+        if (json && json.success) {
+          STATE.gasApiUrl = url;
+          localStorage.setItem('faceattend_gas_api_url', url);
+          updateApiStatusBadge();
+          showToast('Koneksi sukses! Tersambung ke Google Spreadsheet.', 'success');
+          await fetchInitialData();
+        } else {
+          throw new Error('Respon tidak valid dari API GAS.');
+        }
+      } catch (e) {
+        showToast('Koneksi gagal: ' + e.message + '. Pastikan Web App dideploy dengan "Who has access: Anyone".', 'error');
+      }
+    }
+
+    async function saveLocationConfig() {
+      const address = document.getElementById('setLocAddress').value.trim();
+      const lat = parseFloat(document.getElementById('setLocLat').value);
+      const lng = parseFloat(document.getElementById('setLocLng').value);
+      const status = document.getElementById('setLocStatus').checked;
+
+      if (isNaN(lat) || isNaN(lng)) {
+        showToast('Latitude dan Longitude harus berupa angka desimal.', 'error');
+        return;
+      }
+
+      STATE.location = { address, latitude: lat, longitude: lng, status };
+      updateGoogleMapsIframe();
+      await callBackendApi('saveLocation', { location: STATE.location });
+      showToast('Pengaturan lokasi Google Maps berhasil diperbarui!', 'success');
+    }
+
+    async function saveWebConfig() {
+      STATE.settings.schoolName = document.getElementById('setSchoolName').value.trim();
+      STATE.settings.whatsapp = document.getElementById('setSchoolWa').value.trim();
+      STATE.settings.email = document.getElementById('setSchoolEmail').value.trim();
+      STATE.settings.copyright = document.getElementById('setSchoolCopyright').value.trim();
+
+      document.getElementById('footerSchoolName').textContent = STATE.settings.schoolName;
+      document.getElementById('footerWaText').innerHTML = `<i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i> ${STATE.settings.whatsapp}`;
+      document.getElementById('footerEmailText').innerHTML = `<i class="fa-solid fa-envelope text-blue-400 mr-1"></i> ${STATE.settings.email}`;
+      document.getElementById('footerCopyrightText').textContent = STATE.settings.copyright;
+
+      await callBackendApi('saveSettings', { settings: STATE.settings });
+      showToast('Konfigurasi web & footer berhasil disimpan!', 'success');
+    }
+
+    function handleAuthAction() {
+      if (STATE.currentUser) {
+        STATE.currentUser = null;
+        localStorage.removeItem('faceattend_user');
+        document.getElementById('authNavText').textContent = 'Masuk Admin';
+        showToast('Anda telah keluar dari sesi admin.', 'info');
+        navigateToSection('landing');
+      } else {
+        openLoginModal();
+      }
+    }
+
+    function openLoginModal() {
+      document.getElementById('loginModal').classList.remove('hidden');
+      document.getElementById('loginModal').classList.add('flex');
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+      document.getElementById('loginModal').classList.remove('flex');
+    }
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const user = document.getElementById('loginUsername').value.trim();
+      const pass = document.getElementById('loginPassword').value.trim();
+
+      const res = await callBackendApi('login', { username: user, password: pass });
+      if (res && res.success) {
+        completeLogin(res.user);
+      } else {
+        // Fallback login jika menggunakan offline demo credentials
+        if (user === 'admin' && pass === '123') {
+          completeLogin({ id: 'mock_admin', username: 'admin', role: 'Admin' });
+        } else {
+          showToast(res.message || 'Username atau password salah (admin / 123).', 'error');
+        }
+      }
+    }
+
+    function completeLogin(userData) {
+      STATE.currentUser = userData;
+      localStorage.setItem('faceattend_user', JSON.stringify(userData));
+      closeLoginModal();
+      document.getElementById('authNavText').textContent = 'Keluar (' + userData.username + ')';
+      showToast('Selamat datang, ' + userData.username + '!', 'success');
+      openAppTab('presensi');
+    }
+
+    function checkSavedSession() {
+      const saved = localStorage.getItem('faceattend_user');
+      if (saved) {
+        try {
+          const user = JSON.parse(saved);
+          STATE.currentUser = user;
+          document.getElementById('authNavText').textContent = 'Keluar (' + user.username + ')';
+        } catch (e) {
+          localStorage.removeItem('faceattend_user');
+        }
+      }
+    }
+
+    async function fetchInitialData() {
+      const badgeText = document.getElementById('runtimeText');
+
+      if (STATE.isGas) {
+        badgeText.textContent = 'Google Apps Script Live';
+      } else if (STATE.gasApiUrl) {
+        badgeText.textContent = 'GitHub Pages + Sheets API';
+      } else {
+        badgeText.textContent = 'GitHub Pages (Demo Ready)';
+      }
+
+      // 1. Ambil data siswa
+      const studentsRes = await callBackendApi('getStudents');
+      if (studentsRes && studentsRes.success) {
+        STATE.students = studentsRes.students || [];
+        rebuildFaceMatcher();
+        renderEnrolledStudents();
+        renderAttendanceTable();
+      } else if (STATE.students.length === 0) {
+        // Dummy data awal jika belum terhubung ke Google Sheets
+        STATE.students = [
+          {
+            id: 'mock-1',
+            nisn: '0081234001',
+            name: 'Ahmad Fauzan Pratama',
+            class_name: 'X MIPA 1',
+            face_descriptor: null,
+            photo_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80'
+          },
+          {
+            id: 'mock-2',
+            nisn: '0081234002',
+            name: 'Siti Nurhaliza Putri',
+            class_name: 'X MIPA 1',
+            face_descriptor: null,
+            photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80'
+          },
+          {
+            id: 'mock-3',
+            nisn: '0081234003',
+            name: 'Budi Santoso',
+            class_name: 'X MIPA 2',
+            face_descriptor: null,
+            photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80'
+          }
+        ];
+        renderAttendanceTable();
+        renderEnrolledStudents();
+      }
+
+      // 2. Ambil data presensi hari ini
+      const attRes = await callBackendApi('getAttendancesToday');
+      if (attRes && attRes.success) {
+        STATE.attendances = attRes.attendances || [];
+        STATE.attendedTodaySet.clear();
+        STATE.attendances.forEach(a => STATE.attendedTodaySet.add(a.student_id));
+        renderAttendanceTable();
+      }
+
+      // 3. Ambil data carousel
+      const carouselRes = await callBackendApi('getCarousel');
+      if (carouselRes && carouselRes.success && carouselRes.slides?.length > 0) {
+        STATE.carouselSlides = carouselRes.slides;
+        render3DCarousel();
+      } else if (STATE.carouselSlides.length === 0) {
+        STATE.carouselSlides = [
+          {
+            id: 'mock-s1',
+            imageSource: 'url',
+            imageUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1000&auto=format&fit=crop&q=80',
+            title: 'Gedung Kampus & Presensi Digital',
+            description: 'Presensi cerdas bebas hambatan izin kamera browser.',
+            order: 1
+          },
+          {
+            id: 'mock-s2',
+            imageSource: 'url',
+            imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1000&auto=format&fit=crop&q=80',
+            title: 'Monitoring Kehadiran Realtime',
+            description: 'Presisi tinggi 128-D vector AI mendeteksi kehadiran siswa.',
+            order: 2
+          },
+          {
+            id: 'mock-s3',
+            imageSource: 'url',
+            imageUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1000&auto=format&fit=crop&q=80',
+            title: 'Pendidikan Cerdas Berbasis Data',
+            description: 'Rekapitulasi otomatis tersimpan ke Google Spreadsheet.',
+            order: 3
+          }
+        ];
+        render3DCarousel();
+      }
+
+      // 4. Ambil lokasi Google Maps
+      const locRes = await callBackendApi('getLocation');
+      if (locRes && locRes.success && locRes.location) {
+        STATE.location = locRes.location;
+        updateGoogleMapsIframe();
+      } else {
+        updateGoogleMapsIframe();
+      }
+
+      // 5. Ambil pengaturan web
+      const settingsRes = await callBackendApi('getSettings');
+      if (settingsRes && settingsRes.success && settingsRes.settings) {
+        Object.assign(STATE.settings, settingsRes.settings);
+        document.getElementById('footerSchoolName').textContent = STATE.settings.schoolName;
+      }
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('id-ID', { hour12: false });
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const dateStr = now.toLocaleDateString('id-ID', options);
+
+      const clockEl = document.getElementById('digitalClockText');
+      const dateEl = document.getElementById('currentDateText');
+      if (clockEl) clockEl.textContent = timeStr;
+      if (dateEl) dateEl.textContent = dateStr;
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      initTheme();
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      initScrollObserver();
+      initHeroTilt();
+      checkSavedSession();
+
+      await fetchInitialData();
+      await loadFaceModels();
+      await populateCameraDevices();
+
+      document.getElementById('cameraTolerance').addEventListener('change', () => {
+        rebuildFaceMatcher();
+        showToast('Toleransi kecocokan wajah diubah.', 'info');
+      });
+    });
+  </script>
+</body>
+</html>
