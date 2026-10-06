@@ -1019,19 +1019,23 @@
       // 1. Jika berjalan di dalam lingkungan Google Apps Script
       if (STATE.isGas) {
         return new Promise((resolve) => {
-          if (action === 'getStudents') google.script.run.withSuccessHandler(resolve).getStudentsList();
-          else if (action === 'getAttendancesToday') google.script.run.withSuccessHandler(resolve).getAttendancesToday(payload.date);
-          else if (action === 'getCarousel') google.script.run.withSuccessHandler(resolve).getCarouselSlides();
-          else if (action === 'getLocation') google.script.run.withSuccessHandler(resolve).getLocationSettings();
-          else if (action === 'getSettings') google.script.run.withSuccessHandler(resolve).getAppSettings();
-          else if (action === 'login') google.script.run.withSuccessHandler(resolve).loginUser(payload.username, payload.password);
-          else if (action === 'saveStudent') google.script.run.withSuccessHandler(resolve).saveNewStudent(payload.student);
-          else if (action === 'deleteStudent') google.script.run.withSuccessHandler(resolve).deleteStudent(payload.studentId);
-          else if (action === 'recordAttendance') google.script.run.withSuccessHandler(resolve).recordAttendance(payload.studentId);
-          else if (action === 'saveCarousel') google.script.run.withSuccessHandler(resolve).saveCarouselSlide(payload.slide);
-          else if (action === 'deleteCarousel') google.script.run.withSuccessHandler(resolve).deleteCarouselSlide(payload.slideId);
-          else if (action === 'saveLocation') google.script.run.withSuccessHandler(resolve).saveLocationSettings(payload.location);
-          else if (action === 'saveSettings') google.script.run.withSuccessHandler(resolve).saveAppSettings(payload.settings);
+          const runner = google.script.run
+            .withSuccessHandler((res) => resolve(res))
+            .withFailureHandler((err) => resolve({ success: false, message: err.message || String(err) }));
+
+          if (action === 'getStudents') runner.getStudentsList();
+          else if (action === 'getAttendancesToday') runner.getAttendancesToday(payload.date);
+          else if (action === 'getCarousel') runner.getCarouselSlides();
+          else if (action === 'getLocation') runner.getLocationSettings();
+          else if (action === 'getSettings') runner.getAppSettings();
+          else if (action === 'login') runner.loginUser(payload.username, payload.password);
+          else if (action === 'saveStudent') runner.saveNewStudent(payload.student);
+          else if (action === 'deleteStudent') runner.deleteStudent(payload.studentId);
+          else if (action === 'recordAttendance') runner.recordAttendance(payload.studentId, payload.student);
+          else if (action === 'saveCarousel') runner.saveCarouselSlide(payload.slide);
+          else if (action === 'deleteCarousel') runner.deleteCarouselSlide(payload.slideId);
+          else if (action === 'saveLocation') runner.saveLocationSettings(payload.location);
+          else if (action === 'saveSettings') runner.saveAppSettings(payload.settings);
           else resolve({ success: false, message: 'Fungsi GAS tidak tersedia' });
         });
       }
@@ -1566,7 +1570,6 @@
             canvas.height = video.videoHeight;
           }
 
-          // Sensitivity tuned to 0.35 for reliable detection in standard ambient room lighting
           const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 });
           const detections = await faceapi.detectAllFaces(video, options)
             .withFaceLandmarks()
@@ -1578,7 +1581,6 @@
           if (detections.length > 0) {
             detections.forEach(det => {
               const box = det.detection.box;
-              // Mathematically calculate mirrored X-coordinate to match user's mirrored webcam view
               const drawX = canvas.width - box.x - box.width;
               const drawY = box.y;
               const drawW = box.width;
@@ -1598,8 +1600,7 @@
                   processAttendanceHit(student);
                 }
               } else {
-                // When database is empty or students lack descriptors, still visually track the face
-                const label = '✓ Wajah Terdeteksi (Daftarkan di Tab Pendaftaran)';
+                const label = '✓ Wajah Terdeteksi (Daftarkan Siswa di Tab Pendaftaran)';
                 const color = '#00A8FF';
                 drawFacialHud(ctx, drawX, drawY, drawW, drawH, label, color, det.landmarks, canvas.width);
               }
@@ -1638,10 +1639,17 @@
       STATE.attendances.push(newRecord);
       renderAttendanceTable();
 
-      // Sinkronkan presensi ke Google Sheets via unified API bridge
-      const res = await callBackendApi('recordAttendance', { studentId: student.id });
-      if (res && res.alreadyAttended) {
-        console.log('Siswa sudah tercatat di server hari ini.');
+      // Sinkronkan presensi otomatis langsung ke Google Spreadsheet
+      showToast(`Mencatat kehadiran ${student.name} ke Spreadsheet...`, 'info');
+      const res = await callBackendApi('recordAttendance', { studentId: student.id, student: student });
+      if (res && res.success) {
+        if (res.alreadyAttended) {
+          showToast(`Siswa ${student.name} sudah tercatat hadir hari ini.`, 'info');
+        } else {
+          showToast(`✓ Kehadiran ${student.name} berhasil tersimpan di Spreadsheet!`, 'success');
+        }
+      } else {
+        showToast(`Gagal menyimpan ke Spreadsheet: ${res?.message || 'Koneksi terputus'}`, 'error');
       }
     }
 
@@ -1678,6 +1686,24 @@
       const filterClass = document.getElementById('filterClassSelect').value;
       const searchKey = document.getElementById('searchAttendanceInput').value.toLowerCase().trim();
 
+      if (STATE.students.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center py-10 text-slate-500">
+              <i class="fa-solid fa-users-slash text-2xl mb-2 text-slate-600 block"></i>
+              Belum ada data siswa terdaftar di Spreadsheet.<br>
+              <button onclick="switchAppTab('enroll')" class="mt-2.5 px-3 py-1.5 bg-brand-600/20 hover:bg-brand-600/40 text-brand-300 border border-brand-500/30 rounded-lg text-xs transition inline-flex items-center gap-1.5">
+                <i class="fa-solid fa-user-plus"></i> Daftarkan Siswa Baru di Tab Pendaftaran
+              </button>
+            </td>
+          </tr>
+        `;
+        document.getElementById('statTotalStudents').textContent = '0';
+        document.getElementById('statAttendedCount').textContent = '0';
+        document.getElementById('statAbsentCount').textContent = '0';
+        return;
+      }
+
       let filtered = STATE.students.filter(s => {
         const matchClass = (filterClass === 'ALL' || s.class_name === filterClass);
         const matchSearch = (!searchKey || s.name.toLowerCase().includes(searchKey) || s.nisn.includes(searchKey));
@@ -1685,7 +1711,7 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-500">Tidak ada siswa yang sesuai kriteria.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-500">Tidak ada siswa yang sesuai kriteria pencarian.</td></tr>`;
       } else {
         tbody.innerHTML = filtered.map(student => {
           const att = STATE.attendances.find(a => a.student_id === student.id);
@@ -1729,6 +1755,22 @@
       document.getElementById('statTotalStudents').textContent = total;
       document.getElementById('statAttendedCount').textContent = attended;
       document.getElementById('statAbsentCount').textContent = absent;
+    }
+
+    function updateClassFilterOptions() {
+      const select = document.getElementById('filterClassSelect');
+      const currentVal = select.value;
+      const classes = Array.from(new Set(STATE.students.map(s => s.class_name))).filter(Boolean).sort();
+      select.innerHTML = '<option value="ALL">Semua Kelas</option>';
+      classes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = `Kelas ${c}`;
+        select.appendChild(opt);
+      });
+      if (classes.includes(currentVal)) {
+        select.value = currentVal;
+      }
     }
 
     function manualCheckInStudent(studentId) {
@@ -2002,20 +2044,16 @@
       btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Siswa';
 
       if (res && res.success) {
-        STATE.students.push(res.student || newStudent);
+        const savedStudent = res.student || newStudent;
+        STATE.students.push(savedStudent);
         rebuildFaceMatcher();
+        updateClassFilterOptions();
         renderEnrolledStudents();
         renderAttendanceTable();
         resetEnrollForm();
-        showToast(`Siswa ${name} berhasil disimpan ke database Google Sheets!`, 'success');
+        showToast(`Siswa ${name} berhasil disimpan ke Google Spreadsheet!`, 'success');
       } else {
-        // Fallback simpan di memori lokal jika backend belum dikonfigurasi
-        STATE.students.push(newStudent);
-        rebuildFaceMatcher();
-        renderEnrolledStudents();
-        renderAttendanceTable();
-        resetEnrollForm();
-        showToast(`[Demo] Siswa ${name} disimpan ke memori!`, 'success');
+        showToast(`Gagal menyimpan ke Google Sheets: ${res?.message || 'Periksa koneksi backend'}`, 'error');
       }
     }
 
@@ -2037,7 +2075,13 @@
       badge.textContent = `${STATE.students.length} Siswa`;
 
       if (STATE.students.length === 0) {
-        container.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs">Belum ada siswa yang didaftarkan.</div>`;
+        container.innerHTML = `
+          <div class="p-8 text-center text-slate-500 text-xs">
+            <i class="fa-solid fa-address-card text-2xl mb-2 text-slate-600 block"></i>
+            Belum ada siswa yang didaftarkan.<br>
+            Gunakan formulir di sebelah kiri untuk mendaftarkan siswa pertama ke database Google Spreadsheet.
+          </div>
+        `;
         return;
       }
 
@@ -2363,47 +2407,20 @@
       } else if (STATE.gasApiUrl) {
         badgeText.textContent = 'GitHub Pages + Sheets API';
       } else {
-        badgeText.textContent = 'GitHub Pages (Demo Ready)';
+        badgeText.textContent = 'GitHub Pages (Online)';
       }
 
-      // 1. Ambil data siswa
+      // 1. Ambil data siswa asli dari Google Spreadsheet
       const studentsRes = await callBackendApi('getStudents');
       if (studentsRes && studentsRes.success) {
         STATE.students = studentsRes.students || [];
-        rebuildFaceMatcher();
-        renderEnrolledStudents();
-        renderAttendanceTable();
-      } else if (STATE.students.length === 0) {
-        // Dummy data awal jika belum terhubung ke Google Sheets
-        STATE.students = [
-          {
-            id: 'mock-1',
-            nisn: '0081234001',
-            name: 'Ahmad Fauzan Pratama',
-            class_name: 'X MIPA 1',
-            face_descriptor: null,
-            photo_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80'
-          },
-          {
-            id: 'mock-2',
-            nisn: '0081234002',
-            name: 'Siti Nurhaliza Putri',
-            class_name: 'X MIPA 1',
-            face_descriptor: null,
-            photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80'
-          },
-          {
-            id: 'mock-3',
-            nisn: '0081234003',
-            name: 'Budi Santoso',
-            class_name: 'X MIPA 2',
-            face_descriptor: null,
-            photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80'
-          }
-        ];
-        renderAttendanceTable();
-        renderEnrolledStudents();
+      } else {
+        STATE.students = [];
       }
+      rebuildFaceMatcher();
+      updateClassFilterOptions();
+      renderEnrolledStudents();
+      renderAttendanceTable();
 
       // 2. Ambil data presensi hari ini
       const attRes = await callBackendApi('getAttendancesToday');
