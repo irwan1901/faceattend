@@ -236,6 +236,19 @@
     </div>
   </nav>
 
+  <!-- Persistent Alert Banner if GitHub Pages is not yet connected to Google Apps Script -->
+  <div id="gasApiAlertBanner" class="hidden bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-xs text-amber-300">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center gap-2 text-center sm:text-left">
+        <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
+        <span><strong>Belum Terhubung ke Google Spreadsheet:</strong> Aplikasi berjalan di GitHub Pages. Masukkan URL Web App Google Apps Script agar data siswa dan presensi tersimpan otomatis.</span>
+      </div>
+      <button onclick="openConnectGasModal()" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] whitespace-nowrap transition flex items-center gap-1.5 shadow">
+        <i class="fa-solid fa-plug"></i> Hubungkan Sekarang
+      </button>
+    </div>
+  </div>
+
   <div id="viewLanding" class="flex-1 flex flex-col">
     
     <!-- Hero Section -->
@@ -961,6 +974,58 @@
     </div>
   </div>
 
+  <!-- Modal Dialog Konfigurasi Koneksi Google Apps Script API -->
+  <div id="connectGasModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
+            <i class="fa-solid fa-plug text-sm"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Hubungkan ke Google Spreadsheet</h3>
+            <p class="text-[11px] text-slate-400">Integrasi REST API Google Apps Script & GitHub Pages</p>
+          </div>
+        </div>
+        <button onclick="closeConnectGasModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <p id="connectGasNoticeText" class="text-xs text-slate-300 leading-relaxed">
+        Agar pendaftaran siswa dan presensi wajah otomatis tersimpan di <strong>Google Spreadsheet</strong> Anda, masukkan URL Deployment Web App Google Apps Script berikut:
+      </p>
+
+      <div class="space-y-2 text-xs">
+        <label class="block font-semibold text-slate-200">URL Web App Google Apps Script (Exec URL) *</label>
+        <div class="flex gap-2">
+          <input type="text" id="modalInputGasUrl" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-brand-500">
+          <button onclick="submitModalGasUrl()" id="btnModalSaveGas" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-lg shadow-brand-500/20">
+            <i class="fa-solid fa-check"></i> Hubungkan
+          </button>
+        </div>
+      </div>
+
+      <!-- Panduan Cepat 4 Langkah -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-[11px] text-slate-400 space-y-2">
+        <div class="font-bold text-brand-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-question"></i> Cara Mendapatkan URL Web App:
+        </div>
+        <ol class="list-decimal list-inside space-y-1 text-slate-300 leading-relaxed">
+          <li>Buka file <strong>Code.gs</strong> di Google Apps Script Anda.</li>
+          <li>Klik menu biru <strong>Deploy</strong> &gt; <strong>New Deployment</strong> (Penerapan Baru).</li>
+          <li>Pilih tipe <strong>Web App</strong>.</li>
+          <li>Atur <strong>Execute as:</strong> <span class="text-emerald-400 font-mono">Me</span> dan <strong>Who has access:</strong> <span class="text-emerald-400 font-mono">Anyone</span> (Siapa saja).</li>
+          <li>Klik <strong>Deploy</strong> lalu salin URL yang berakhiran <span class="text-brand-400 font-mono">/exec</span> dan tempel di atas.</li>
+        </ol>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button onclick="closeConnectGasModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="toastNotificationBox" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- Hidden Native Camera Inputs (Bypass/Fallback for low-end mobile) -->
@@ -1057,8 +1122,12 @@
         }
       }
 
-      // 3. Mode Fallback Safe Preview (Standalone)
-      return { success: false, isDemo: true, message: 'Mode Standalone (Demo)' };
+      // 3. Jika URL Web App belum diisi saat berjalan di GitHub Pages
+      return { 
+        success: false, 
+        isDemo: true, 
+        message: 'Aplikasi belum terhubung ke Google Spreadsheet. Harap masukkan URL Web App Google Apps Script.' 
+      };
     }
 
     function playVerificationChime() {
@@ -2025,6 +2094,12 @@
         return;
       }
 
+      // Jika diakses dari GitHub Pages dan URL belum dikonfigurasi
+      if (!STATE.isGas && !STATE.gasApiUrl) {
+        openConnectGasModal('Untuk menyimpan data siswa ke Google Spreadsheet, silakan hubungkan URL Web App Google Apps Script Anda terlebih dahulu.');
+        return;
+      }
+
       const btn = document.getElementById('btnSaveStudent');
       btn.setAttribute('disabled', 'true');
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
@@ -2053,7 +2128,142 @@
         resetEnrollForm();
         showToast(`Siswa ${name} berhasil disimpan ke Google Spreadsheet!`, 'success');
       } else {
-        showToast(`Gagal menyimpan ke Google Sheets: ${res?.message || 'Periksa koneksi backend'}`, 'error');
+        if (res && res.isDemo) {
+          openConnectGasModal('Penyimpanan gagal karena Google Spreadsheet belum terhubung. Masukkan URL Web App Google Apps Script Anda.');
+        } else {
+          showToast(`Gagal menyimpan ke Google Sheets: ${res?.message || 'Periksa koneksi backend'}`, 'error');
+        }
+      }
+    }
+
+    function checkSavedSession() {
+      const saved = localStorage.getItem('faceattend_user');
+      if (saved) {
+        try {
+          STATE.currentUser = JSON.parse(saved);
+          updateAuthNavUi();
+        } catch (e) {
+          localStorage.removeItem('faceattend_user');
+          STATE.currentUser = null;
+          updateAuthNavUi();
+        }
+      } else {
+        STATE.currentUser = null;
+        updateAuthNavUi();
+      }
+    }
+
+    function updateAuthNavUi() {
+      const text = document.getElementById('authNavText');
+      if (!text) return;
+      if (STATE.currentUser) {
+        text.textContent = 'Keluar Admin';
+      } else {
+        text.textContent = 'Masuk Admin';
+      }
+    }
+
+    function handleAuthAction() {
+      if (STATE.currentUser) {
+        logoutUser();
+      } else {
+        openLoginModal();
+      }
+    }
+
+    function openLoginModal() {
+      const modal = document.getElementById('loginModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeLoginModal() {
+      const modal = document.getElementById('loginModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function handleLoginSubmit(event) {
+      event.preventDefault();
+      const userEl = document.getElementById('loginUsername');
+      const passEl = document.getElementById('loginPassword');
+      const btn = document.getElementById('btnLoginSubmit');
+
+      const username = userEl.value.trim();
+      const password = passEl.value.trim();
+      if (!username || !password) return;
+
+      btn.setAttribute('disabled', 'true');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memvalidasi...';
+
+      let res = await callBackendApi('login', { username, password });
+
+      // Fallback local bootstrap for demo/offline GitHub Pages mode
+      if (!res.success && (res.isDemo || (username === 'admin' && password === '123'))) {
+        res = {
+          success: true,
+          user: { id: 'admin-1', username: 'admin', role: 'Admin' }
+        };
+      }
+
+      btn.removeAttribute('disabled');
+      btn.innerHTML = 'Masuk ke Dashboard';
+
+      if (res.success) {
+        STATE.currentUser = res.user;
+        localStorage.setItem('faceattend_user', JSON.stringify(res.user));
+        updateAuthNavUi();
+        closeLoginModal();
+        userEl.value = '';
+        passEl.value = '';
+        showToast(`Selamat datang, ${res.user.username}!`, 'success');
+        openAppTab('presensi');
+      } else {
+        showToast(res.message || 'Login gagal. Periksa username dan password.', 'error');
+      }
+    }
+
+    function logoutUser() {
+      STATE.currentUser = null;
+      localStorage.removeItem('faceattend_user');
+      updateAuthNavUi();
+      showToast('Anda telah keluar dari sesi admin.', 'info');
+      navigateToSection('landing');
+    }
+
+    function rebuildFaceMatcher() {
+      const badge = document.getElementById('totalEnrolledBadge');
+      if (!STATE.students || STATE.students.length === 0) {
+        STATE.faceMatcher = null;
+        if (badge) badge.textContent = '0 Wajah';
+        return;
+      }
+
+      const labeledDescriptors = [];
+      STATE.students.forEach(s => {
+        if (s.face_descriptor && Array.isArray(s.face_descriptor) && s.face_descriptor.length === 128) {
+          try {
+            const floatArr = new Float32Array(s.face_descriptor);
+            labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(s.id, [floatArr]));
+          } catch (e) {
+            console.warn('Descriptor build error for student:', s.name, e);
+          }
+        }
+      });
+
+      const tolSelect = document.getElementById('cameraTolerance');
+      const tolerance = tolSelect ? parseFloat(tolSelect.value) : 0.52;
+
+      if (labeledDescriptors.length > 0) {
+        STATE.faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, tolerance);
+        if (badge) badge.textContent = `${labeledDescriptors.length} Wajah`;
+      } else {
+        STATE.faceMatcher = null;
+        if (badge) badge.textContent = '0 Wajah';
       }
     }
 
@@ -2064,7 +2274,11 @@
       document.getElementById('enrollSnapshotImg').classList.add('hidden');
       document.getElementById('enrollImgPlaceholder').classList.remove('hidden');
       document.getElementById('descriptorReadyBadge').classList.add('hidden');
-      document.getElementById('enrollStatusLabel').textContent = 'Tersimpan';
+      const statusLabel = document.getElementById('enrollStatusLabel');
+      if (statusLabel) {
+        statusLabel.textContent = 'Belum Ada Sampel';
+        statusLabel.className = 'text-amber-400 font-mono text-[11px]';
+      }
       STATE.enrollExtractedDescriptor = null;
       STATE.enrollExtractedPhoto = null;
     }
@@ -2072,14 +2286,14 @@
     function renderEnrolledStudents() {
       const container = document.getElementById('enrolledStudentsContainer');
       const badge = document.getElementById('enrollTotalCountBadge');
-      badge.textContent = `${STATE.students.length} Siswa`;
+      if (badge) badge.textContent = `${STATE.students.length} Siswa`;
+      if (!container) return;
 
       if (STATE.students.length === 0) {
         container.innerHTML = `
           <div class="p-8 text-center text-slate-500 text-xs">
-            <i class="fa-solid fa-address-card text-2xl mb-2 text-slate-600 block"></i>
-            Belum ada siswa yang didaftarkan.<br>
-            Gunakan formulir di sebelah kiri untuk mendaftarkan siswa pertama ke database Google Spreadsheet.
+            <i class="fa-solid fa-users-slash text-2xl mb-2 text-slate-600 block"></i>
+            Belum ada siswa terdaftar. Daftarkan siswa baru pada formulir di samping.
           </div>
         `;
         return;
@@ -2089,76 +2303,67 @@
         <div class="p-3 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition">
           <div class="flex items-center gap-3 min-w-0">
             <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center flex-shrink-0">
-              ${s.photo_url ? `<img src="${s.photo_url}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-user text-slate-500"></i>`}
+              ${s.photo_url 
+                ? `<img src="${s.photo_url}" alt="${s.name}" class="w-full h-full object-cover">` 
+                : `<i class="fa-solid fa-user text-slate-500"></i>`}
             </div>
             <div class="min-w-0">
-              <h5 class="text-xs font-bold text-white truncate">${s.name}</h5>
+              <h4 class="text-xs font-bold text-white truncate">${s.name}</h4>
               <p class="text-[11px] text-slate-400 font-mono">NISN: ${s.nisn} | Kelas: ${s.class_name}</p>
             </div>
           </div>
-          <button onclick="removeStudent('${s.id}')" title="Hapus Siswa" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center transition">
+          <button onclick="deleteStudent('${s.id}')" title="Hapus Siswa" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center transition flex-shrink-0">
             <i class="fa-solid fa-trash-can text-xs"></i>
           </button>
         </div>
       `).join('');
     }
 
-    async function removeStudent(studentId) {
-      await callBackendApi('deleteStudent', { studentId: studentId });
-      STATE.students = STATE.students.filter(s => s.id !== studentId);
-      rebuildFaceMatcher();
-      renderEnrolledStudents();
-      renderAttendanceTable();
-      showToast('Siswa berhasil dihapus dari database.', 'info');
-    }
+    async function deleteStudent(studentId) {
+      const student = STATE.students.find(s => s.id === studentId);
+      if (!student) return;
 
-    function rebuildFaceMatcher() {
-      const labeled = [];
-      STATE.students.forEach(s => {
-        let desc = s.face_descriptor;
-        if (typeof desc === 'string') {
-          try { desc = JSON.parse(desc); } catch (e) { desc = null; }
-        }
+      showToast(`Menghapus data ${student.name}...`, 'info');
+      const res = await callBackendApi('deleteStudent', { studentId });
 
-        if (desc && (Array.isArray(desc) || desc instanceof Float32Array) && desc.length === 128) {
-          try {
-            const arr = new Float32Array(desc);
-            labeled.push(new faceapi.LabeledFaceDescriptors(s.id, [arr]));
-          } catch (e) {
-            console.warn('Descriptor array invalid for:', s.name);
-          }
-        }
-      });
-
-      const tol = parseFloat(document.getElementById('cameraTolerance')?.value || '0.52');
-      if (labeled.length > 0) {
-        STATE.faceMatcher = new faceapi.FaceMatcher(labeled, tol);
-        document.getElementById('totalEnrolledBadge').textContent = `${labeled.length} Wajah`;
+      if (res && res.success) {
+        STATE.students = STATE.students.filter(s => s.id !== studentId);
+        STATE.attendances = STATE.attendances.filter(a => a.student_id !== studentId);
+        STATE.attendedTodaySet.delete(studentId);
+        rebuildFaceMatcher();
+        updateClassFilterOptions();
+        renderEnrolledStudents();
+        renderAttendanceTable();
+        showToast(`Siswa ${student.name} berhasil dihapus.`, 'success');
       } else {
-        STATE.faceMatcher = null;
-        document.getElementById('totalEnrolledBadge').textContent = '0 Wajah';
+        showToast(`Gagal menghapus siswa: ${res?.message || 'Error'}`, 'error');
       }
     }
 
     function setSlideSource(type) {
       STATE.slideSourceType = type;
+      const btnUrl = document.getElementById('btnSourceUrl');
+      const btnUpload = document.getElementById('btnSourceUpload');
+      const groupUrl = document.getElementById('inputUrlGroup');
+      const groupUpload = document.getElementById('inputUploadGroup');
+
       if (type === 'url') {
-        document.getElementById('inputUrlGroup').classList.remove('hidden');
-        document.getElementById('inputUploadGroup').classList.add('hidden');
-        document.getElementById('btnSourceUrl').className = 'py-2 rounded-xl bg-brand-600 text-white font-medium border border-brand-500';
-        document.getElementById('btnSourceUpload').className = 'py-2 rounded-xl bg-slate-800 text-slate-400 font-medium border border-slate-700';
+        btnUrl.className = 'py-2 rounded-xl bg-brand-600 text-white font-medium border border-brand-500';
+        btnUpload.className = 'py-2 rounded-xl bg-slate-800 text-slate-400 font-medium border border-slate-700';
+        groupUrl.classList.remove('hidden');
+        groupUpload.classList.add('hidden');
       } else {
-        document.getElementById('inputUrlGroup').classList.add('hidden');
-        document.getElementById('inputUploadGroup').classList.remove('hidden');
-        document.getElementById('btnSourceUpload').className = 'py-2 rounded-xl bg-brand-600 text-white font-medium border border-brand-500';
-        document.getElementById('btnSourceUrl').className = 'py-2 rounded-xl bg-slate-800 text-slate-400 font-medium border border-slate-700';
+        btnUpload.className = 'py-2 rounded-xl bg-brand-600 text-white font-medium border border-brand-500';
+        btnUrl.className = 'py-2 rounded-xl bg-slate-800 text-slate-400 font-medium border border-slate-700';
+        groupUpload.classList.remove('hidden');
+        groupUrl.classList.add('hidden');
       }
     }
 
     function previewSlideImage(url) {
       const img = document.getElementById('slideImgPreview');
       const placeholder = document.getElementById('slideImgPlaceholder');
-      if (url) {
+      if (url && url.startsWith('http')) {
         img.src = url;
         img.classList.remove('hidden');
         placeholder.classList.add('hidden');
@@ -2174,7 +2379,11 @@
       const reader = new FileReader();
       reader.onload = (e) => {
         STATE.uploadedSlideBase64 = e.target.result;
-        previewSlideImage(STATE.uploadedSlideBase64);
+        const img = document.getElementById('slideImgPreview');
+        const placeholder = document.getElementById('slideImgPlaceholder');
+        img.src = STATE.uploadedSlideBase64;
+        img.classList.remove('hidden');
+        placeholder.classList.add('hidden');
       };
       reader.readAsDataURL(file);
     }
@@ -2184,125 +2393,172 @@
       const desc = document.getElementById('slideDesc').value.trim();
       const order = parseInt(document.getElementById('slideOrder').value) || 1;
       const link = document.getElementById('slideLink').value.trim();
+      const urlInput = document.getElementById('slideImageUrl').value.trim();
 
-      let imageUrl = '';
+      let finalUrl = '';
       if (STATE.slideSourceType === 'url') {
-        imageUrl = document.getElementById('slideImageUrl').value.trim();
-        if (!imageUrl) {
+        if (!urlInput) {
           showToast('Masukkan URL gambar terlebih dahulu.', 'error');
           return;
         }
+        finalUrl = urlInput;
       } else {
         if (!STATE.uploadedSlideBase64) {
-          showToast('Pilih file gambar untuk diupload.', 'error');
+          showToast('Pilih file gambar untuk diunggah terlebih dahulu.', 'error');
           return;
         }
-        imageUrl = STATE.uploadedSlideBase64;
       }
 
+      showToast('Menyimpan slide carousel...', 'info');
       const newSlide = {
         id: 'slide_' + Date.now(),
         imageSource: STATE.slideSourceType,
-        imageUrl: imageUrl,
-        photoBase64: STATE.slideSourceType === 'upload' ? STATE.uploadedSlideBase64 : '',
-        title: title || 'Fasilitas Sekolah',
-        description: desc || 'Infrastruktur cerdas terintegrasi.',
+        imageUrl: finalUrl,
+        photoBase64: STATE.uploadedSlideBase64,
+        title: title || 'Slide Fasilitas Kampus',
+        description: desc || '',
         link: link || '#',
         order: order,
         status: true
       };
 
-      await callBackendApi('saveCarousel', { slide: newSlide });
-      STATE.carouselSlides.push(newSlide);
-      render3DCarousel();
-      renderAdminCarouselList();
-      showToast('Slide carousel berhasil disimpan!', 'success');
+      const res = await callBackendApi('saveCarousel', { slide: newSlide });
+      if (res && res.success) {
+        showToast('Slide berhasil disimpan ke database!', 'success');
+        document.getElementById('slideTitle').value = '';
+        document.getElementById('slideDesc').value = '';
+        document.getElementById('slideImageUrl').value = '';
+        document.getElementById('slideFileInput').value = '';
+        STATE.uploadedSlideBase64 = '';
+        document.getElementById('slideImgPreview').classList.add('hidden');
+        document.getElementById('slideImgPlaceholder').classList.remove('hidden');
+
+        const cRes = await callBackendApi('getCarousel');
+        if (cRes && cRes.success && cRes.slides) {
+          STATE.carouselSlides = cRes.slides;
+          render3DCarousel();
+          renderAdminCarouselList();
+        }
+      } else {
+        showToast(`Gagal menyimpan slide: ${res?.message || 'Error'}`, 'error');
+      }
+    }
+
+    async function deleteCarouselSlide(slideId) {
+      showToast('Menghapus slide...', 'info');
+      const res = await callBackendApi('deleteCarousel', { slideId });
+      if (res && res.success) {
+        STATE.carouselSlides = STATE.carouselSlides.filter(s => s.id !== slideId);
+        render3DCarousel();
+        renderAdminCarouselList();
+        showToast('Slide carousel dihapus.', 'success');
+      } else {
+        showToast(`Gagal menghapus slide: ${res?.message || 'Error'}`, 'error');
+      }
     }
 
     function renderAdminCarouselList() {
       const container = document.getElementById('carouselSlidesList');
+      if (!container) return;
+
       if (STATE.carouselSlides.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs">Belum ada slide aktif.</div>`;
+        container.innerHTML = `
+          <div class="p-8 text-center text-slate-500 text-xs">
+            Belum ada slide aktif di database. Tambahkan slide melalui formulir di samping.
+          </div>
+        `;
         return;
       }
-      container.innerHTML = STATE.carouselSlides.map(s => `
+
+      container.innerHTML = STATE.carouselSlides.map((slide, idx) => `
         <div class="p-3 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition">
-          <div class="flex items-center gap-3">
-            <img src="${s.imageUrl}" class="w-14 h-10 object-cover rounded-lg border border-slate-700">
-            <div>
-              <h5 class="text-xs font-bold text-white">${s.title}</h5>
-              <p class="text-[11px] text-slate-400">Urutan: ${s.order} | Sumber: ${s.imageSource}</p>
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-14 h-10 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0">
+              <img src="${slide.imageUrl}" alt="${slide.title}" class="w-full h-full object-cover">
+            </div>
+            <div class="min-w-0">
+              <h4 class="text-xs font-bold text-white truncate">${slide.title || 'Slide #' + (idx + 1)}</h4>
+              <p class="text-[11px] text-slate-400 truncate">Urutan: ${slide.order} | Sumber: ${slide.imageSource}</p>
             </div>
           </div>
-          <button onclick="removeCarouselSlide('${s.id}')" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center transition">
+          <button onclick="deleteCarouselSlide('${slide.id}')" title="Hapus Slide" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center transition flex-shrink-0">
             <i class="fa-solid fa-trash-can text-xs"></i>
           </button>
         </div>
       `).join('');
     }
 
-    async function removeCarouselSlide(slideId) {
-      STATE.carouselSlides = STATE.carouselSlides.filter(s => s.id !== slideId);
-      render3DCarousel();
-      renderAdminCarouselList();
-      await callBackendApi('deleteCarousel', { slideId: slideId });
-      showToast('Slide carousel telah dihapus.', 'info');
-    }
-
-    function loadSettingsToForm() {
-      document.getElementById('inputGasApiUrl').value = STATE.gasApiUrl;
-      document.getElementById('setLocAddress').value = STATE.location.address;
-      document.getElementById('setLocLat').value = STATE.location.latitude;
-      document.getElementById('setLocLng').value = STATE.location.longitude;
-      document.getElementById('setLocStatus').checked = STATE.location.status;
-
-      document.getElementById('setSchoolName').value = STATE.settings.schoolName;
-      document.getElementById('setSchoolWa').value = STATE.settings.whatsapp;
-      document.getElementById('setSchoolEmail').value = STATE.settings.email;
-      document.getElementById('setSchoolCopyright').value = STATE.settings.copyright;
-      updateApiStatusBadge();
-    }
-
     function updateApiStatusBadge() {
       const badge = document.getElementById('apiStatusBadge');
+      if (!badge) return;
       if (STATE.isGas) {
-        badge.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-xs font-mono text-emerald-400 border border-emerald-500/30';
-        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Google Apps Script Container';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> Google Apps Script';
+        badge.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-mono';
       } else if (STATE.gasApiUrl) {
-        badge.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-xs font-mono text-emerald-400 border border-emerald-500/30';
-        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Terhubung ke Google Sheets API';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> Terhubung Sheets API';
+        badge.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-mono';
       } else {
-        badge.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-xs font-mono text-amber-400 border border-amber-500/30';
-        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> Mode Standalone (Offline/Demo)';
+        badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> Belum Terhubung';
+        badge.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-xs font-mono text-slate-300 border border-slate-700';
       }
     }
 
     async function saveAndTestGasApiUrl() {
-      const url = document.getElementById('inputGasApiUrl').value.trim();
+      const input = document.getElementById('inputGasApiUrl');
+      const url = input.value.trim();
       if (!url) {
-        localStorage.removeItem('faceattend_gas_api_url');
-        STATE.gasApiUrl = '';
-        updateApiStatusBadge();
-        showToast('URL API dihapus. Berjalan dalam mode demo.', 'info');
+        showToast('Masukkan URL Web App Google Apps Script.', 'error');
+        return;
+      }
+      if (!url.startsWith('https://script.google.com/macros/s/') || !url.endsWith('/exec')) {
+        showToast('Format URL salah! URL harus diawali "https://script.google.com/macros/s/" dan berakhiran "/exec"', 'error');
         return;
       }
 
-      showToast('Menguji koneksi ke Google Apps Script API...', 'info');
+      showToast('Menguji koneksi ke Google Apps Script...', 'info');
       try {
-        const testRes = await fetch(url + '?action=ping');
-        const json = await testRes.json();
+        const res = await fetch(url + '?action=ping');
+        const json = await res.json();
         if (json && json.success) {
           STATE.gasApiUrl = url;
           localStorage.setItem('faceattend_gas_api_url', url);
           updateApiStatusBadge();
-          showToast('Koneksi sukses! Tersambung ke Google Spreadsheet.', 'success');
+          checkGasConnectionState();
+          showToast('Koneksi Berhasil! Terhubung ke Google Spreadsheet.', 'success');
           await fetchInitialData();
         } else {
-          throw new Error('Respon tidak valid dari API GAS.');
+          throw new Error('Respon tidak valid.');
         }
-      } catch (e) {
-        showToast('Koneksi gagal: ' + e.message + '. Pastikan Web App dideploy dengan "Who has access: Anyone".', 'error');
+      } catch (err) {
+        showToast('Gagal terhubung. Pastikan Web App disetel "Who has access: Anyone".', 'error');
       }
+    }
+
+    function loadSettingsToForm() {
+      const apiUrlInput = document.getElementById('inputGasApiUrl');
+      if (apiUrlInput) apiUrlInput.value = STATE.gasApiUrl || '';
+
+      const addrInput = document.getElementById('setLocAddress');
+      const latInput = document.getElementById('setLocLat');
+      const lngInput = document.getElementById('setLocLng');
+      const statInput = document.getElementById('setLocStatus');
+
+      if (addrInput) addrInput.value = STATE.location.address || '';
+      if (latInput) latInput.value = STATE.location.latitude ?? -6.4883;
+      if (lngInput) lngInput.value = STATE.location.longitude ?? 106.8778;
+      if (statInput) statInput.checked = STATE.location.status !== false;
+
+      const schName = document.getElementById('setSchoolName');
+      const schWa = document.getElementById('setSchoolWa');
+      const schEmail = document.getElementById('setSchoolEmail');
+      const schCopy = document.getElementById('setSchoolCopyright');
+
+      if (schName) schName.value = STATE.settings.schoolName || '';
+      if (schWa) schWa.value = STATE.settings.whatsapp || '';
+      if (schEmail) schEmail.value = STATE.settings.email || '';
+      if (schCopy) schCopy.value = STATE.settings.copyright || '';
+
+      updateApiStatusBadge();
     }
 
     async function saveLocationConfig() {
@@ -2311,91 +2567,135 @@
       const lng = parseFloat(document.getElementById('setLocLng').value);
       const status = document.getElementById('setLocStatus').checked;
 
-      if (isNaN(lat) || isNaN(lng)) {
-        showToast('Latitude dan Longitude harus berupa angka desimal.', 'error');
+      if (!address || isNaN(lat) || isNaN(lng)) {
+        showToast('Lengkapi alamat serta koordinat Latitude & Longitude valid.', 'error');
         return;
       }
 
-      STATE.location = { address, latitude: lat, longitude: lng, status };
-      updateGoogleMapsIframe();
-      await callBackendApi('saveLocation', { location: STATE.location });
-      showToast('Pengaturan lokasi Google Maps berhasil diperbarui!', 'success');
+      showToast('Menyimpan pengaturan lokasi...', 'info');
+      const newLoc = { address, latitude: lat, longitude: lng, status };
+      const res = await callBackendApi('saveLocation', { location: newLoc });
+
+      if (res && res.success) {
+        STATE.location = newLoc;
+        updateGoogleMapsIframe();
+        showToast('Pengaturan lokasi Google Maps berhasil disimpan!', 'success');
+      } else {
+        showToast(`Gagal menyimpan lokasi: ${res?.message || 'Error'}`, 'error');
+      }
     }
 
     async function saveWebConfig() {
-      STATE.settings.schoolName = document.getElementById('setSchoolName').value.trim();
-      STATE.settings.whatsapp = document.getElementById('setSchoolWa').value.trim();
-      STATE.settings.email = document.getElementById('setSchoolEmail').value.trim();
-      STATE.settings.copyright = document.getElementById('setSchoolCopyright').value.trim();
+      const schoolName = document.getElementById('setSchoolName').value.trim();
+      const whatsapp = document.getElementById('setSchoolWa').value.trim();
+      const email = document.getElementById('setSchoolEmail').value.trim();
+      const copyright = document.getElementById('setSchoolCopyright').value.trim();
 
-      document.getElementById('footerSchoolName').textContent = STATE.settings.schoolName;
-      document.getElementById('footerWaText').innerHTML = `<i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i> ${STATE.settings.whatsapp}`;
-      document.getElementById('footerEmailText').innerHTML = `<i class="fa-solid fa-envelope text-blue-400 mr-1"></i> ${STATE.settings.email}`;
-      document.getElementById('footerCopyrightText').textContent = STATE.settings.copyright;
+      const newSettings = { schoolName, whatsapp, email, copyright };
+      showToast('Menyimpan konfigurasi web...', 'info');
+      const res = await callBackendApi('saveSettings', { settings: newSettings });
 
-      await callBackendApi('saveSettings', { settings: STATE.settings });
-      showToast('Konfigurasi web & footer berhasil disimpan!', 'success');
-    }
-
-    function handleAuthAction() {
-      if (STATE.currentUser) {
-        STATE.currentUser = null;
-        localStorage.removeItem('faceattend_user');
-        document.getElementById('authNavText').textContent = 'Masuk Admin';
-        showToast('Anda telah keluar dari sesi admin.', 'info');
-        navigateToSection('landing');
-      } else {
-        openLoginModal();
-      }
-    }
-
-    function openLoginModal() {
-      document.getElementById('loginModal').classList.remove('hidden');
-      document.getElementById('loginModal').classList.add('flex');
-    }
-
-    function closeLoginModal() {
-      document.getElementById('loginModal').classList.add('hidden');
-      document.getElementById('loginModal').classList.remove('flex');
-    }
-
-    async function handleLoginSubmit(e) {
-      e.preventDefault();
-      const user = document.getElementById('loginUsername').value.trim();
-      const pass = document.getElementById('loginPassword').value.trim();
-
-      const res = await callBackendApi('login', { username: user, password: pass });
       if (res && res.success) {
-        completeLogin(res.user);
-      } else {
-        // Fallback login jika menggunakan offline demo credentials
-        if (user === 'admin' && pass === '123') {
-          completeLogin({ id: 'mock_admin', username: 'admin', role: 'Admin' });
-        } else {
-          showToast(res.message || 'Username atau password salah (admin / 123).', 'error');
+        Object.assign(STATE.settings, newSettings);
+        if (schoolName) {
+          const fn = document.getElementById('footerSchoolName');
+          if (fn) fn.textContent = schoolName;
         }
+        if (whatsapp) {
+          const fw = document.getElementById('footerWaText');
+          if (fw) fw.innerHTML = `<i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i> ${whatsapp}`;
+        }
+        if (email) {
+          const fe = document.getElementById('footerEmailText');
+          if (fe) fe.innerHTML = `<i class="fa-solid fa-envelope text-blue-400 mr-1"></i> ${email}`;
+        }
+        if (copyright) {
+          const fc = document.getElementById('footerCopyrightText');
+          if (fc) fc.textContent = copyright;
+        }
+        showToast('Konfigurasi website berhasil disimpan!', 'success');
+      } else {
+        showToast(`Gagal menyimpan konfigurasi: ${res?.message || 'Error'}`, 'error');
       }
     }
 
-    function completeLogin(userData) {
-      STATE.currentUser = userData;
-      localStorage.setItem('faceattend_user', JSON.stringify(userData));
-      closeLoginModal();
-      document.getElementById('authNavText').textContent = 'Keluar (' + userData.username + ')';
-      showToast('Selamat datang, ' + userData.username + '!', 'success');
-      openAppTab('presensi');
+    function openConnectGasModal(customMessage) {
+      const modal = document.getElementById('connectGasModal');
+      const input = document.getElementById('modalInputGasUrl');
+      const notice = document.getElementById('connectGasNoticeText');
+
+      input.value = STATE.gasApiUrl || '';
+      if (customMessage) {
+        notice.textContent = customMessage;
+      } else {
+        notice.innerHTML = 'Agar pendaftaran siswa dan presensi wajah otomatis tersimpan di <strong>Google Spreadsheet</strong> Anda, masukkan URL Deployment Web App Google Apps Script Anda:';
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
     }
 
-    function checkSavedSession() {
-      const saved = localStorage.getItem('faceattend_user');
-      if (saved) {
-        try {
-          const user = JSON.parse(saved);
-          STATE.currentUser = user;
-          document.getElementById('authNavText').textContent = 'Keluar (' + user.username + ')';
-        } catch (e) {
-          localStorage.removeItem('faceattend_user');
+    function closeConnectGasModal() {
+      const modal = document.getElementById('connectGasModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function submitModalGasUrl() {
+      const input = document.getElementById('modalInputGasUrl');
+      const btn = document.getElementById('btnModalSaveGas');
+      const url = input.value.trim();
+
+      if (!url) {
+        showToast('Masukkan URL Web App Google Apps Script terlebih dahulu.', 'error');
+        return;
+      }
+
+      if (!url.startsWith('https://script.google.com/macros/s/') || !url.endsWith('/exec')) {
+        showToast('Format URL salah! URL harus diawali "https://script.google.com/macros/s/" dan berakhiran "/exec"', 'error');
+        return;
+      }
+
+      btn.setAttribute('disabled', 'true');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menguji...';
+
+      try {
+        const testRes = await fetch(url + '?action=ping');
+        const json = await testRes.json();
+
+        if (json && json.success) {
+          STATE.gasApiUrl = url;
+          localStorage.setItem('faceattend_gas_api_url', url);
+
+          // Update input di tab pengaturan
+          const settingsInput = document.getElementById('inputGasApiUrl');
+          if (settingsInput) settingsInput.value = url;
+
+          updateApiStatusBadge();
+          checkGasConnectionState();
+          closeConnectGasModal();
+
+          showToast('Koneksi Berhasil! Terhubung ke Google Spreadsheet.', 'success');
+          await fetchInitialData();
+        } else {
+          throw new Error('Respon tidak dikenali.');
         }
+      } catch (err) {
+        showToast('Koneksi Gagal: Pastikan Deployment Web App diatur dengan "Who has access: Anyone".', 'error');
+      } finally {
+        btn.removeAttribute('disabled');
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Hubungkan';
+      }
+    }
+
+    function checkGasConnectionState() {
+      const banner = document.getElementById('gasApiAlertBanner');
+      if (!banner) return;
+
+      if (!STATE.isGas && !STATE.gasApiUrl) {
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
       }
     }
 
@@ -2503,6 +2803,7 @@
       initScrollObserver();
       initHeroTilt();
       checkSavedSession();
+      checkGasConnectionState();
 
       await fetchInitialData();
       await loadFaceModels();
