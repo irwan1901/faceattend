@@ -856,11 +856,11 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-medium text-slate-300 mb-1">Latitude *</label>
-              <input type="text" id="setLocLat" placeholder="-6.4883" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none">
+              <input type="text" id="setLocLat" placeholder="-6.4735552" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none">
             </div>
             <div>
               <label class="block font-medium text-slate-300 mb-1">Longitude *</label>
-              <input type="text" id="setLocLng" placeholder="106.8778" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none">
+              <input type="text" id="setLocLng" placeholder="106.8941631" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none">
             </div>
           </div>
 
@@ -1064,15 +1064,15 @@
       enrollExtractedPhoto: null,
       audioCtx: null,
       location: {
-        address: 'Jl. Raya Pahlawan No. 123, Citeureup, Bogor, Jawa Barat',
-        latitude: -6.4883,
-        longitude: 106.8778,
+        address: 'Jl. Ateng Ilyas Kp. Muhara RT.004 RW.008  No.63, Citeureup, Bogor, Jawa Barat 16810',
+        latitude: -6,4735552,
+        longitude: 106.8941631,
         status: true
       },
       settings: {
-        schoolName: 'SMA Negeri Unggulan Saung Digital',
-        whatsapp: '081234567890',
-        email: 'info@sekolah.sch.id',
+        schoolName: 'SMP SAUNG DIGITAL',
+        whatsapp: '6289638960001',
+        email: 'irwanahmad19@gmail.com',
         copyright: '© 2026 FaceAttend AI — Seluruh Hak Cipta Dilindungi.'
       }
     };
@@ -1385,8 +1385,8 @@
       const directLink = document.getElementById('mapsDirectLink');
 
       const loc = STATE.location || {};
-      const lat = typeof loc.latitude === 'number' ? loc.latitude : -6.4883;
-      const lng = typeof loc.longitude === 'number' ? loc.longitude : 106.8778;
+      const lat = typeof loc.latitude === 'number' ? loc.latitude : -6,4735552;
+      const lng = typeof loc.longitude === 'number' ? loc.longitude : 106,8941631;
       const addr = loc.address || 'Pusat Informasi Kampus Sekolah';
 
       if (addressText) addressText.textContent = addr;
@@ -2544,8 +2544,8 @@
       const statInput = document.getElementById('setLocStatus');
 
       if (addrInput) addrInput.value = STATE.location.address || '';
-      if (latInput) latInput.value = STATE.location.latitude ?? -6.4883;
-      if (lngInput) lngInput.value = STATE.location.longitude ?? 106.8778;
+      if (latInput) latInput.value = STATE.location.latitude ?? -6,4735552;
+      if (lngInput) lngInput.value = STATE.location.longitude ?? 106,8941631;
       if (statInput) statInput.checked = STATE.location.status !== false;
 
       const schName = document.getElementById('setSchoolName');
