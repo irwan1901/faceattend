@@ -494,7 +494,7 @@
           <!-- Camera Viewport -->
           <div class="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
             <video id="videoScanner" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
-            <canvas id="canvasOverlay" class="absolute inset-0 w-full h-full pointer-events-none transform -scale-x-100"></canvas>
+            <canvas id="canvasOverlay" class="absolute inset-0 w-full h-full pointer-events-none object-cover"></canvas>
             
             <div id="scannerLaser" class="scanner-beam hidden"></div>
 
@@ -1152,18 +1152,37 @@
       const label = document.getElementById('aiStatusLabel');
       try {
         label.textContent = 'Memuat Model AI...';
+        label.className = 'text-amber-400 font-mono animate-pulse';
         if (typeof faceapi === 'undefined') {
           throw new Error('face-api.js library belum siap atau terblokir');
         }
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
+
+        const modelCdns = [
+          'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/',
+          'https://raw.githubusercontent.com/vladmandic/face-api/master/model/'
+        ];
+
+        let loaded = false;
+        for (const url of modelCdns) {
+          try {
+            await Promise.all([
+              faceapi.nets.tinyFaceDetector.loadFromUri(url),
+              faceapi.nets.faceLandmark68Net.loadFromUri(url),
+              faceapi.nets.faceRecognitionNet.loadFromUri(url)
+            ]);
+            loaded = true;
+            break;
+          } catch (e) {
+            console.warn(`Gagal memuat model dari ${url}, mencoba sumber cadangan...`);
+          }
+        }
+
+        if (!loaded) throw new Error('Semua endpoint CDN model tidak merespons.');
+
         STATE.modelsLoaded = true;
         label.textContent = 'AI Ready (128-D)';
         label.className = 'text-emerald-400 font-mono';
+        showToast('Model AI Pengenal Wajah Siap.', 'success');
       } catch (err) {
         console.error('Face-API model load error:', err);
         label.textContent = 'Gagal Muat AI';
@@ -1386,8 +1405,12 @@
 
     async function startScannerCamera() {
       if (!STATE.modelsLoaded) {
-        showToast('Model AI sedang dimuat, harap tunggu sejenak.', 'info');
-        return;
+        showToast('Menyiapkan model AI wajah, mohon tunggu sebentar...', 'info');
+        await loadFaceModels();
+        if (!STATE.modelsLoaded) {
+          showToast('Model AI belum siap. Periksa koneksi internet Anda.', 'error');
+          return;
+        }
       }
       stopEnrollCamera();
 
@@ -1469,6 +1492,60 @@
       }
     }
 
+    function drawFacialHud(ctx, x, y, width, height, label, color, landmarks, canvasWidth) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+
+      // Draw high-tech corner brackets
+      const bracketLen = Math.min(width, height) * 0.22;
+      ctx.beginPath();
+      // Top-Left
+      ctx.moveTo(x, y + bracketLen); ctx.lineTo(x, y); ctx.lineTo(x + bracketLen, y);
+      // Top-Right
+      ctx.moveTo(x + width - bracketLen, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + bracketLen);
+      // Bottom-Right
+      ctx.moveTo(x + width, y + height - bracketLen); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width - bracketLen, y + height);
+      // Bottom-Left
+      ctx.moveTo(x + bracketLen, y + height); ctx.lineTo(x, y + height); ctx.lineTo(x, y + height - bracketLen);
+      ctx.stroke();
+
+      // Subtle translucent box tint
+      ctx.fillStyle = color === '#10b981' ? 'rgba(16, 185, 129, 0.12)' : (color === '#f43f5e' ? 'rgba(244, 63, 94, 0.14)' : 'rgba(0, 168, 255, 0.12)');
+      ctx.fillRect(x, y, width, height);
+
+      // Draw mirrored facial landmarks
+      if (landmarks && landmarks.positions) {
+        ctx.fillStyle = color;
+        landmarks.positions.forEach((pt, index) => {
+          if (index % 3 === 0) { // Sample points for high performance
+            const mirrX = canvasWidth - pt.x;
+            ctx.fillRect(mirrX - 1.5, pt.y - 1.5, 3, 3);
+          }
+        });
+      }
+
+      // Draw floating readable text badge (un-mirrored)
+      ctx.font = 'bold 12px Inter, sans-serif';
+      const textWidth = ctx.measureText(label).width;
+      const badgeH = 22;
+      const badgeW = textWidth + 14;
+      const badgeY = y > badgeH + 6 ? y - badgeH - 4 : y + height + 4;
+
+      ctx.fillStyle = color;
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(x, badgeY, badgeW, badgeH, 6);
+        ctx.fill();
+      } else {
+        ctx.fillRect(x, badgeY, badgeW, badgeH);
+      }
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, x + 7, badgeY + 15);
+      ctx.restore();
+    }
+
     function startDetectionLoop() {
       if (STATE.scannerInterval) clearInterval(STATE.scannerInterval);
       const video = document.getElementById('videoScanner');
@@ -1479,7 +1556,7 @@
         STATE.isProcessingFrame = true;
 
         try {
-          if (video.videoWidth === 0 || video.videoHeight === 0) {
+          if (!video.videoWidth || !video.videoHeight) {
             STATE.isProcessingFrame = false;
             return;
           }
@@ -1489,7 +1566,8 @@
             canvas.height = video.videoHeight;
           }
 
-          const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+          // Sensitivity tuned to 0.35 for reliable detection in standard ambient room lighting
+          const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 });
           const detections = await faceapi.detectAllFaces(video, options)
             .withFaceLandmarks()
             .withFaceDescriptors();
@@ -1497,30 +1575,33 @@
           const ctx = canvas.getContext('2d');
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          if (detections.length > 0 && STATE.faceMatcher) {
+          if (detections.length > 0) {
             detections.forEach(det => {
-              const bestMatch = STATE.faceMatcher.findBestMatch(det.descriptor);
               const box = det.detection.box;
-              const isMatch = bestMatch.label !== 'unknown';
-              const student = isMatch ? STATE.students.find(s => s.id === bestMatch.label) : null;
+              // Mathematically calculate mirrored X-coordinate to match user's mirrored webcam view
+              const drawX = canvas.width - box.x - box.width;
+              const drawY = box.y;
+              const drawW = box.width;
+              const drawH = box.height;
 
-              const label = student ? `${student.name} (${Math.round((1 - bestMatch.distance) * 100)}%)` : 'Wajah Tidak Dikenal';
-              const color = student ? '#10b981' : '#f43f5e';
+              if (STATE.faceMatcher) {
+                const bestMatch = STATE.faceMatcher.findBestMatch(det.descriptor);
+                const isMatch = bestMatch.label !== 'unknown';
+                const student = isMatch ? STATE.students.find(s => s.id === bestMatch.label) : null;
 
-              ctx.strokeStyle = color;
-              ctx.lineWidth = 3;
-              ctx.strokeRect(box.x, box.y, box.width, box.height);
+                const label = student ? `✓ ${student.name} (${Math.round((1 - bestMatch.distance) * 100)}%)` : '? Wajah Tidak Dikenal';
+                const color = student ? '#10b981' : '#f43f5e';
 
-              ctx.fillStyle = color;
-              ctx.font = 'bold 12px Inter, sans-serif';
-              const textWidth = ctx.measureText(label).width;
-              ctx.fillRect(box.x, box.y > 20 ? box.y - 20 : box.y, textWidth + 8, 20);
+                drawFacialHud(ctx, drawX, drawY, drawW, drawH, label, color, det.landmarks, canvas.width);
 
-              ctx.fillStyle = '#ffffff';
-              ctx.fillText(label, box.x + 4, box.y > 20 ? box.y - 5 : box.y + 14);
-
-              if (student) {
-                processAttendanceHit(student);
+                if (student) {
+                  processAttendanceHit(student);
+                }
+              } else {
+                // When database is empty or students lack descriptors, still visually track the face
+                const label = '✓ Wajah Terdeteksi (Daftarkan di Tab Pendaftaran)';
+                const color = '#00A8FF';
+                drawFacialHud(ctx, drawX, drawY, drawW, drawH, label, color, det.landmarks, canvas.width);
               }
             });
           }
@@ -1747,14 +1828,15 @@
 
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth || 480;
+        canvas.width = video.videoWidth || 640;
         canvas.height = video.videoHeight || 480;
         const ctx = canvas.getContext('2d');
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        const detection = await faceapi.detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 });
+        const detection = await faceapi.detectSingleFace(canvas, options)
           .withFaceLandmarks()
           .withFaceDescriptor();
 
@@ -1989,9 +2071,14 @@
     function rebuildFaceMatcher() {
       const labeled = [];
       STATE.students.forEach(s => {
-        if (s.face_descriptor && Array.isArray(s.face_descriptor) && s.face_descriptor.length === 128) {
+        let desc = s.face_descriptor;
+        if (typeof desc === 'string') {
+          try { desc = JSON.parse(desc); } catch (e) { desc = null; }
+        }
+
+        if (desc && (Array.isArray(desc) || desc instanceof Float32Array) && desc.length === 128) {
           try {
-            const arr = new Float32Array(s.face_descriptor);
+            const arr = new Float32Array(desc);
             labeled.push(new faceapi.LabeledFaceDescriptors(s.id, [arr]));
           } catch (e) {
             console.warn('Descriptor array invalid for:', s.name);
