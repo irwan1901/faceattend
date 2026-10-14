@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <base target="_top">
-  <title>FaceAttend AI — Sistem Absensi Wajah Siswa Realtime</title>
+  <title>FaceAttend AI — Sistem Absensi Wajah Guru & Staf Tata Usaha Realtime</title>
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -198,9 +198,9 @@
         </div>
         <div>
           <span class="font-extrabold text-base md:text-lg tracking-tight text-white flex items-center gap-2">
-            FaceAttend<span class="text-brand-400 font-mono">AI</span>
+            FaceAttend<span class="text-brand-400 font-mono">GTK</span>
           </span>
-          <p class="text-[10px] text-slate-400 font-mono">Realtime Face Attendance</p>
+          <p class="text-[10px] text-slate-400 font-mono">SMP PGRI CITEUREUP</p>
         </div>
       </a>
 
@@ -241,7 +241,7 @@
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
       <div class="flex items-center gap-2 text-center sm:text-left">
         <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
-        <span><strong>Belum Terhubung ke Google Spreadsheet:</strong> Aplikasi berjalan di GitHub Pages. Masukkan URL Web App Google Apps Script agar data siswa dan presensi tersimpan otomatis.</span>
+        <span><strong>Belum Terhubung ke Google Spreadsheet:</strong> Aplikasi berjalan di GitHub Pages. Masukkan URL Web App Google Apps Script agar data Guru/Staf TU dan presensi tersimpan otomatis.</span>
       </div>
       <button onclick="openConnectGasModal()" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] whitespace-nowrap transition flex items-center gap-1.5 shadow">
         <i class="fa-solid fa-plug"></i> Hubungkan Sekarang
@@ -263,43 +263,44 @@
         <div class="lg:col-span-6 space-y-6">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-400 text-xs font-semibold">
             <span class="w-2 h-2 rounded-full bg-brand-400 animate-ping"></span>
-            <span>GITHUB PAGES + GOOGLE SHEETS LIVE</span>
+            <span>PRESENSI DIGITAL GURU & TENAGA KEPENDIDIKAN</span>
           </div>
 
           <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
-            Presensi Siswa Otomatis Berbasis 
+            Presensi Guru & Staf TU Berbasis 
             <span class="text-gradient-blue block mt-1">Vektor Wajah 128-D</span>
           </h1>
 
           <p class="text-slate-300 text-sm md:text-base leading-relaxed max-w-xl">
-            Solusi presensi cerdas bebas blokir izin kamera dengan HTTPS native. Didukung pemrosesan AI edge client-side berkecepatan tinggi yang tersinkronisasi langsung ke <strong class="text-white">Google Spreadsheet</strong> dan <strong class="text-white">Google Drive</strong>.
+            Solusi kehadiran Pendidik dan Tenaga Kependidikan (PTK) bebas hambatan izin kamera dengan HTTPS native. Didukung pemrosesan AI edge client-side berkecepatan tinggi yang tersinkronisasi langsung ke <strong class="text-white">Google Spreadsheet</strong> dan <strong class="text-white">Google Drive</strong>.
           </p>
 
           <!-- Action Buttons -->
           <div class="flex flex-wrap items-center gap-3 pt-2">
             <button onclick="openAppTab('presensi')" class="px-5 py-3 rounded-xl bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 text-white font-semibold text-xs md:text-sm flex items-center gap-2 shadow-xl shadow-brand-500/25 hover:scale-[1.02] active:scale-[0.98] transition">
               <i class="fa-solid fa-camera"></i>
-              <span>Mulai Mode Presensi</span>
+              <span>Mulai Presensi GTK</span>
             </button>
             <button onclick="openAppTab('enroll')" class="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs md:text-sm font-medium flex items-center gap-2 transition">
-              <i class="fa-solid fa-user-plus text-brand-400"></i>
-              <span>Daftarkan Siswa Baru</span>
+              <i class="fa-solid fa-user-tie text-brand-400"></i>
+              <span>Daftarkan Guru / Staf</span>
             </button>
           </div>
 
           <!-- Quick Micro Stats -->
           <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-800/80">
             <div>
-              <div class="font-mono text-xl md:text-2xl font-bold text-brand-400">99.8%</div>
-              <div class="text-[11px] text-slate-400">Akurasi AI TinyFace</div>
-            </div>
+          <span class="text-xs font-mono font-semibold text-brand-400 uppercase tracking-widest">LOKASI & MONITOR PRESENSI</span>
+          <h2 class="text-2xl font-bold text-white mt-1" id="mapsTitle">Kampus SMP PGRI CITEUREUP</h2>
+          <p class="text-xs text-slate-400 mt-1 max-w-xl" id="mapsAddressText">Memuat alamat sekolah...</p>
+        </div>
             <div>
               <div class="font-mono text-xl md:text-2xl font-bold text-emerald-400">&lt; 350ms</div>
-              <div class="text-[11px] text-slate-400">Waktu Verifikasi</div>
+              <div class="text-[11px] text-slate-400">Verifikasi Wajah</div>
             </div>
             <div>
               <div class="font-mono text-xl md:text-2xl font-bold text-blue-400">Cloud Sync</div>
-              <div class="text-[11px] text-slate-400">Google Sheets DB</div>
+              <div class="text-[11px] text-slate-400">Rekap Kepegawaian</div>
             </div>
           </div>
         </div>
@@ -318,17 +319,17 @@
                     <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
                   </div>
                   <span class="text-[10px] font-mono text-brand-400 flex items-center gap-1">
-                    <i class="fa-solid fa-shield-halved"></i> HTTPS Native Camera Active
+                    <i class="fa-solid fa-shield-halved"></i> Terminal Presensi Ruang Guru & TU
                   </span>
                 </div>
 
                 <div class="relative aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
-                  <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80" alt="Students in Classroom" class="w-full h-full object-cover opacity-80">
+                  <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80" alt="Guru dan Staf Tata Usaha" class="w-full h-full object-cover opacity-80">
                   <div class="scanner-beam"></div>
                   
                   <div class="absolute inset-x-12 top-6 bottom-6 border-2 border-emerald-400 rounded-lg flex flex-col justify-between p-2 pointer-events-none">
-                    <span class="bg-emerald-500 text-white font-mono text-[9px] px-1.5 py-0.5 rounded self-start">Ahmad Fauzan (98.4%)</span>
-                    <span class="text-emerald-300 font-mono text-[9px] self-end">TERVERIFIKASI ✓</span>
+                    <span class="bg-emerald-500 text-white font-mono text-[9px] px-1.5 py-0.5 rounded self-start">Budi Santoso, S.Pd. (98.9%)</span>
+                    <span class="text-emerald-300 font-mono text-[9px] self-end">HADIR TEPAT WAKTU ✓</span>
                   </div>
                 </div>
 
@@ -348,7 +349,7 @@
                     </div>
                     <div>
                       <p class="font-bold text-white text-[11px]">Google Sheets</p>
-                      <p class="text-[10px] text-slate-400">Auto Rekapitulasi</p>
+                      <p class="text-[10px] text-slate-400">Laporan Kepegawaian</p>
                     </div>
                   </div>
                 </div>
@@ -367,8 +368,8 @@
         
         <div class="text-center max-w-2xl mx-auto mb-8">
           <span class="text-xs font-mono font-semibold text-brand-400 uppercase tracking-widest">GALERI 3D INTERAKTIF</span>
-          <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">Ekosistem Digital Sekolah</h2>
-          <p class="text-xs sm:text-sm text-slate-400 mt-2">Geser atau gunakan tombol navigasi untuk menjelajahi fasilitas presensi dan kegiatan belajar mengajar.</p>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">Ekosistem Digital Kepegawaian Sekolah</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-2">Geser atau gunakan tombol navigasi untuk menjelajahi fasilitas ruang guru, tata usaha, dan layanan administrasi sekolah.</p>
         </div>
 
         <div class="carousel-perspective-viewport relative">
@@ -390,8 +391,8 @@
     <section id="features" class="py-16 px-4 max-w-7xl mx-auto w-full">
       <div class="text-center max-w-2xl mx-auto mb-12 scroll-reveal-card">
         <span class="text-xs font-mono font-semibold text-brand-400 uppercase tracking-widest">KEUNGGULAN UTAMA</span>
-        <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">Dirancang Khusus untuk Sekolah Modern</h2>
-        <p class="text-xs sm:text-sm text-slate-400 mt-2">Bebas hambatan izin kamera browser dengan performa penuh AI client-side.</p>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">Manajemen Kehadiran Guru & Staf TU Modern</h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-2">Memudahkan pemantauan kedisiplinan dan rekapitulasi jam hadir Pendidik & Tenaga Kependidikan secara akurat.</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -400,15 +401,15 @@
             <i class="fa-brands fa-github"></i>
           </div>
           <h3 class="text-base font-bold text-white">Deploy GitHub Pages 1-Click</h3>
-          <p class="text-xs text-slate-400 leading-relaxed">Berjalan di domain HTTPS resmi tanpa iframe sandbox, menjamin akses kamera laptop & ponsel selalu diizinkan dengan mulus.</p>
+          <p class="text-xs text-slate-400 leading-relaxed">Berjalan di domain HTTPS resmi tanpa iframe sandbox, menjamin akses kamera komputer Ruang Guru/TU maupun ponsel selalu diizinkan.</p>
         </div>
 
         <div class="scroll-reveal-card bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col gap-3 hover:border-brand-500/50 transition">
           <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl">
             <i class="fa-solid fa-file-shield"></i>
           </div>
-          <h3 class="text-base font-bold text-white">Database Google Spreadsheet</h3>
-          <p class="text-xs text-slate-400 leading-relaxed">Guru dan operator dapat langsung melihat rekapitulasi data absensi di Google Sheets tanpa perlu mengelola server database SQL rumit.</p>
+          <h3 class="text-base font-bold text-white">Database Kepegawaian Spreadsheet</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">Kepala Sekolah dan Kepala Tata Usaha dapat langsung memantau rekapitulasi kehadiran harian di Google Sheets secara real-time.</p>
         </div>
 
         <div class="scroll-reveal-card bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col gap-3 hover:border-brand-500/50 transition">
@@ -416,7 +417,7 @@
             <i class="fa-solid fa-microchip"></i>
           </div>
           <h3 class="text-base font-bold text-white">Audio Chime & Anti-Spam</h3>
-          <p class="text-xs text-slate-400 leading-relaxed">Dilengkapi suara verifikasi instan via Web Audio API dan mekanisme debounce proteksi presensi ganda otomatis per hari per siswa.</p>
+          <p class="text-xs text-slate-400 leading-relaxed">Dilengkapi suara verifikasi instan via Web Audio API dan mekanisme debounce proteksi presensi ganda otomatis per hari per pegawai.</p>
         </div>
       </div>
     </section>
@@ -426,7 +427,7 @@
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
             <span class="text-xs font-mono font-semibold text-brand-400 uppercase tracking-widest">LOKASI & MONITOR PRESENSI</span>
-            <h2 class="text-2xl font-bold text-white mt-1" id="mapsTitle">Pusat Informasi Kampus Sekolah</h2>
+            <h2 class="text-2xl font-bold text-white mt-1" id="mapsTitle">Lokasi Kampus SMP PGRI CITEUREUP</h2>
             <p class="text-xs text-slate-400 mt-1 max-w-xl" id="mapsAddressText">Memuat alamat sekolah...</p>
           </div>
           <div class="flex items-center gap-2">
@@ -457,20 +458,20 @@
         </button>
         <div>
           <h2 class="text-sm font-bold text-white flex items-center gap-2">
-            <span id="appPanelTitle">Dashboard Presensi Wajah</span>
+            <span id="appPanelTitle">Dashboard Presensi Guru & Staf TU</span>
             <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ONLINE</span>
           </h2>
-          <p class="text-[11px] text-slate-400">Panel Operasional Presensi Siswa</p>
+          <p class="text-[11px] text-slate-400">Panel Operasional Kehadiran Pendidik & Tenaga Kependidikan</p>
         </div>
       </div>
 
       <!-- App Tabs -->
       <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-medium w-full md:w-auto overflow-x-auto">
         <button id="tabBtnPresensi" onclick="switchAppTab('presensi')" class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 bg-brand-600 text-white shadow transition">
-          <i class="fa-solid fa-qrcode"></i> Presensi Kelas
+          <i class="fa-solid fa-qrcode"></i> Presensi GTK
         </button>
         <button id="tabBtnEnroll" onclick="switchAppTab('enroll')" class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white transition">
-          <i class="fa-solid fa-user-plus"></i> Pendaftaran Wajah
+          <i class="fa-solid fa-user-tie"></i> Pendaftaran Guru/Staf
         </button>
         <button id="tabBtnCarouselAdmin" onclick="switchAppTab('carouselAdmin')" class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white transition">
           <i class="fa-solid fa-images"></i> Kelola 3D
@@ -481,7 +482,7 @@
       </div>
     </div>
 
-    <!-- SUB-TAB 1: PRESENSI KELAS -->
+    <!-- SUB-TAB 1: PRESENSI GURU & STAF TU -->
     <div id="subTabPresensi" class="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
       
       <!-- Sisi Kiri: Kamera Scanner -->
@@ -491,7 +492,7 @@
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" id="cameraStatusDot"></span>
-              <span class="text-xs font-bold text-white">Pemindai Kamera</span>
+              <span class="text-xs font-bold text-white">Pemindai Wajah GTK</span>
             </div>
             
             <div class="flex items-center gap-2">
@@ -524,7 +525,7 @@
             <!-- Instant Toast Verification -->
             <div id="instantToast" class="absolute bottom-3 left-3 right-3 bg-emerald-950/95 border border-emerald-500/80 rounded-xl p-3 shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
               <div class="w-11 h-11 rounded-lg bg-emerald-900/80 overflow-hidden flex-shrink-0 border border-emerald-400/50 flex items-center justify-center">
-                <img id="toastStudentPhoto" src="" alt="Siswa" class="w-full h-full object-cover hidden">
+                <img id="toastStudentPhoto" src="" alt="Pegawai" class="w-full h-full object-cover hidden">
                 <i id="toastStudentIcon" class="fa-solid fa-user-check text-emerald-400 text-base"></i>
               </div>
               <div class="flex-1 min-w-0">
@@ -532,8 +533,8 @@
                   <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
                   <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Wajah Terverifikasi</span>
                 </div>
-                <h4 id="toastStudentName" class="text-xs font-bold text-white truncate">Nama Siswa</h4>
-                <p id="toastStudentMeta" class="text-[11px] text-emerald-200/80 truncate">NISN: - | Jam: 00:00:00</p>
+                <h4 id="toastStudentName" class="text-xs font-bold text-white truncate">Nama Guru / Staf</h4>
+                <p id="toastStudentMeta" class="text-[11px] text-emerald-200/80 truncate">NIP/NUPTK: - | Jam: 00:00:00</p>
               </div>
               <div class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
                 <i class="fa-solid fa-check text-xs"></i>
@@ -573,7 +574,7 @@
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
-              Log Kehadiran Kelas
+              Log Kehadiran Guru & Staf TU
               <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30">REALTIME</span>
             </h3>
             <p id="currentDateText" class="text-xs text-slate-400 mt-0.5">Memuat tanggal...</p>
@@ -585,14 +586,14 @@
               <span class="text-[10px] text-slate-500 font-mono">WIB</span>
             </div>
             <select id="filterClassSelect" onchange="renderAttendanceTable()" class="bg-slate-800 border border-slate-700 text-xs rounded-xl px-3 py-2 text-slate-200 focus:outline-none">
-              <option value="ALL">Semua Kelas</option>
+              <option value="ALL">Semua Jabatan / Unit</option>
             </select>
           </div>
         </div>
 
         <div class="grid grid-cols-3 gap-3">
           <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
-            <span class="text-xs text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-users text-blue-400"></i> Total Siswa</span>
+            <span class="text-xs text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-user-tie text-blue-400"></i> Total Guru & Staf</span>
             <span id="statTotalStudents" class="text-xl font-bold font-mono text-white">0</span>
           </div>
           <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
@@ -609,7 +610,7 @@
           <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-3">
             <div class="relative w-full sm:w-64">
               <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-              <input type="text" id="searchAttendanceInput" oninput="renderAttendanceTable()" placeholder="Cari nama atau NISN..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none">
+              <input type="text" id="searchAttendanceInput" oninput="renderAttendanceTable()" placeholder="Cari nama atau NIP/NUPTK..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none">
             </div>
             <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
               <button onclick="exportAttendanceCSV()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs flex items-center gap-1.5 transition">
@@ -625,8 +626,8 @@
             <table class="w-full text-left border-collapse text-xs">
               <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[11px] sticky top-0 z-10 border-b border-slate-800">
                 <tr>
-                  <th class="py-3 px-3">Siswa</th>
-                  <th class="py-3 px-3">Kelas</th>
+                  <th class="py-3 px-3">Guru / Staf TU</th>
+                  <th class="py-3 px-3">Jabatan / Unit Kerja</th>
                   <th class="py-3 px-3">Jam Masuk</th>
                   <th class="py-3 px-3 text-center">Status</th>
                   <th class="py-3 px-3 text-center">Aksi</th>
@@ -645,31 +646,42 @@
 
     </div>
 
-    <!-- SUB-TAB 2: PENDAFTARAN WAJAH -->
+    <!-- SUB-TAB 2: PENDAFTARAN WAJAH GURU & STAF TU -->
     <div id="subTabEnroll" class="hidden grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
       <section class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
         <div>
           <h3 class="text-base font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-id-card text-emerald-400"></i>
-            Pendaftaran Vektor Wajah Siswa
+            <i class="fa-solid fa-id-card-clip text-emerald-400"></i>
+            Pendaftaran Vektor Wajah Guru & Staf TU
           </h3>
-          <p class="text-xs text-slate-400 mt-0.5">Ambil sampel foto langsung dari webcam untuk diekstraksi ke 128-D facial vector.</p>
+          <p class="text-xs text-slate-400 mt-0.5">Ambil sampel foto langsung dari webcam untuk diekstraksi ke 128-D facial vector kepegawaian.</p>
         </div>
 
         <div class="space-y-3">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">NISN Siswa *</label>
-              <input type="text" id="enrollNisn" placeholder="Contoh: 0081234567" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none">
+              <label class="block text-xs font-medium text-slate-300 mb-1">NIP / NUPTK / ID Pegawai *</label>
+              <input type="text" id="enrollNisn" placeholder="Contoh: 198504122010011008" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none">
             </div>
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Kelas *</label>
-              <input type="text" id="enrollClass" placeholder="Contoh: X MIPA 1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none">
+              <label class="block text-xs font-medium text-slate-300 mb-1">Jabatan / Unit Kerja *</label>
+              <input type="text" id="enrollClass" list="jabatanOptions" placeholder="Pilih atau ketik jabatan..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none">
+              <datalist id="jabatanOptions">
+                <option value="GURU MAPEL">
+                <option value="GURU KELAS">
+                <option value="GURU BK">
+                <option value="STAF TATA USAHA">
+                <option value="KEPALA TATA USAHA">
+                <option value="KEPALA SEKOLAH">
+                <option value="WAKIL KEPALA SEKOLAH">
+                <option value="OPERATOR SEKOLAH">
+                <option value="PUSTAKAWAN / LABORAN">
+              </datalist>
             </div>
           </div>
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Nama Lengkap *</label>
-            <input type="text" id="enrollName" placeholder="Contoh: Ahmad Fauzan" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none">
+            <label class="block text-xs font-medium text-slate-300 mb-1">Nama Lengkap & Gelar *</label>
+            <input type="text" id="enrollName" placeholder="Contoh: Budi Santoso, S.Pd., M.Pd." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none">
           </div>
         </div>
 
@@ -710,7 +722,7 @@
               <i class="fa-solid fa-camera"></i>
             </button>
             <button type="button" onclick="submitNewStudent()" id="btnSaveStudent" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition disabled:opacity-50">
-              <i class="fa-solid fa-floppy-disk"></i> Simpan Siswa
+              <i class="fa-solid fa-floppy-disk"></i> Simpan Pegawai
             </button>
           </div>
         </div>
@@ -719,10 +731,10 @@
       <section class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-base font-bold text-white">Daftar Siswa Terdaftar</h3>
-            <p class="text-xs text-slate-400">Basis data siswa yang tersimpan di Google Sheets.</p>
+            <h3 class="text-base font-bold text-white">Daftar Guru & Staf TU Terdaftar</h3>
+            <p class="text-xs text-slate-400">Basis data Pendidik & Tenaga Kependidikan di Google Sheets.</p>
           </div>
-          <span id="enrollTotalCountBadge" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 text-xs font-mono font-bold">0 Siswa</span>
+          <span id="enrollTotalCountBadge" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 text-xs font-mono font-bold">0 Pegawai</span>
         </div>
 
         <div class="flex-1 overflow-y-auto max-h-[480px] border border-slate-800 rounded-xl">
@@ -833,7 +845,7 @@
             <span class="font-bold text-brand-400 block"><i class="fa-solid fa-circle-info mr-1"></i> Keunggulan Deploy GitHub:</span>
             <span>✓ Kamera laptop/HP langsung aktif tanpa blokir iframe sandbox.</span><br>
             <span>✓ Data presensi tetap tersinkronisasi realtime ke Google Sheets.</span><br>
-            <span>✓ Hosting gratis, uptime 99.9%, dan siap dibagikan ke siswa/guru.</span>
+            <span>✓ Hosting gratis, uptime 99.9%, dan siap digunakan di Ruang Guru & TU.</span>
           </div>
         </div>
       </section>
@@ -921,17 +933,17 @@
         </div>
         <div>
           <span class="font-bold text-sm text-white">FaceAttend AI</span>
-          <p id="footerSchoolName" class="text-xs text-slate-400">SMA Negeri Unggulan Saung Digital</p>
+          <p id="footerSchoolName" class="text-xs text-slate-400">SMP PGRI CITEUREUP</p>
         </div>
       </div>
 
       <div class="flex items-center gap-4 text-xs text-slate-400">
         <span id="footerWaText"><i class="fa-brands fa-whatsapp text-emerald-400 mr-1"></i> 081234567890</span>
-        <span id="footerEmailText"><i class="fa-solid fa-envelope text-blue-400 mr-1"></i> info@sekolah.sch.id</span>
+        <span id="footerEmailText"><i class="fa-solid fa-envelope text-blue-400 mr-1"></i> info@smppgriciteureup.sch.id</span>
       </div>
 
       <div class="text-center md:text-right">
-        <p id="footerCopyrightText" class="text-xs text-slate-500">© 2026 FaceAttend AI — Seluruh Hak Cipta Dilindungi.</p>
+        <p id="footerCopyrightText" class="text-xs text-slate-500">© 2026 FaceAttend AI — SMP PGRI CITEUREUP. Seluruh Hak Cipta Dilindungi.</p>
         <p class="text-[10px] text-slate-600 mt-0.5">Developed by <span class="text-brand-400">SaungDigital</span></p>
       </div>
 
@@ -991,7 +1003,7 @@
       </div>
 
       <p id="connectGasNoticeText" class="text-xs text-slate-300 leading-relaxed">
-        Agar pendaftaran siswa dan presensi wajah otomatis tersimpan di <strong>Google Spreadsheet</strong> Anda, masukkan URL Deployment Web App Google Apps Script berikut:
+        Agar pendaftaran Guru / Staf TU dan presensi wajah otomatis tersimpan di <strong>Google Spreadsheet</strong> Anda, masukkan URL Deployment Web App Google Apps Script berikut:
       </p>
 
       <div class="space-y-2 text-xs">
@@ -1064,16 +1076,16 @@
       enrollExtractedPhoto: null,
       audioCtx: null,
       location: {
-        address: 'Jl. Raya Pahlawan No. 123, Citeureup, Bogor, Jawa Barat',
+        address: 'Jl. Raya Mayor Oking Jaya Atmaja, Citeureup, Kec. Citeureup, Kabupaten Bogor, Jawa Barat',
         latitude: -6.4883,
         longitude: 106.8778,
         status: true
       },
       settings: {
-        schoolName: 'SMA Negeri Unggulan Saung Digital',
+        schoolName: 'SMP PGRI CITEUREUP',
         whatsapp: '081234567890',
-        email: 'info@sekolah.sch.id',
-        copyright: '© 2026 FaceAttend AI — Seluruh Hak Cipta Dilindungi.'
+        email: 'info@smppgriciteureup.sch.id',
+        copyright: '© 2026 FaceAttend AI — SMP PGRI CITEUREUP. Seluruh Hak Cipta Dilindungi.'
       }
     };
 
@@ -1088,15 +1100,15 @@
             .withSuccessHandler((res) => resolve(res))
             .withFailureHandler((err) => resolve({ success: false, message: err.message || String(err) }));
 
-          if (action === 'getStudents') runner.getStudentsList();
+          if (action === 'getStudents' || action === 'getStaff') runner.getStaffList();
           else if (action === 'getAttendancesToday') runner.getAttendancesToday(payload.date);
           else if (action === 'getCarousel') runner.getCarouselSlides();
           else if (action === 'getLocation') runner.getLocationSettings();
           else if (action === 'getSettings') runner.getAppSettings();
           else if (action === 'login') runner.loginUser(payload.username, payload.password);
-          else if (action === 'saveStudent') runner.saveNewStudent(payload.student);
-          else if (action === 'deleteStudent') runner.deleteStudent(payload.studentId);
-          else if (action === 'recordAttendance') runner.recordAttendance(payload.studentId, payload.student);
+          else if (action === 'saveStudent' || action === 'saveStaff') runner.saveNewStaff(payload.student || payload.staff);
+          else if (action === 'deleteStudent' || action === 'deleteStaff') runner.deleteStaff(payload.studentId || payload.staffId);
+          else if (action === 'recordAttendance') runner.recordAttendance(payload.studentId || payload.staffId, payload.student || payload.staff);
           else if (action === 'saveCarousel') runner.saveCarouselSlide(payload.slide);
           else if (action === 'deleteCarousel') runner.deleteCarouselSlide(payload.slideId);
           else if (action === 'saveLocation') runner.saveLocationSettings(payload.location);
@@ -1669,7 +1681,7 @@
                   processAttendanceHit(student);
                 }
               } else {
-                const label = '✓ Wajah Terdeteksi (Daftarkan Siswa di Tab Pendaftaran)';
+                const label = '✓ Wajah Terdeteksi (Daftarkan Guru/Staf di Tab Pendaftaran)';
                 const color = '#00A8FF';
                 drawFacialHud(ctx, drawX, drawY, drawW, drawH, label, color, det.landmarks, canvas.width);
               }
@@ -1713,7 +1725,7 @@
       const res = await callBackendApi('recordAttendance', { studentId: student.id, student: student });
       if (res && res.success) {
         if (res.alreadyAttended) {
-          showToast(`Siswa ${student.name} sudah tercatat hadir hari ini.`, 'info');
+          showToast(`${student.name} sudah tercatat hadir hari ini.`, 'info');
         } else {
           showToast(`✓ Kehadiran ${student.name} berhasil tersimpan di Spreadsheet!`, 'success');
         }
@@ -1730,7 +1742,7 @@
       const fallback = document.getElementById('toastStudentIcon');
 
       name.textContent = student.name;
-      meta.textContent = `NISN: ${student.nisn} | Kelas: ${student.class_name}`;
+      meta.textContent = `NIP/NUPTK: ${student.nisn} | Jabatan: ${student.class_name}`;
 
       if (student.photo_url) {
         photo.src = student.photo_url;
@@ -1760,9 +1772,9 @@
           <tr>
             <td colspan="5" class="text-center py-10 text-slate-500">
               <i class="fa-solid fa-users-slash text-2xl mb-2 text-slate-600 block"></i>
-              Belum ada data siswa terdaftar di Spreadsheet.<br>
+              Belum ada data Guru / Staf TU terdaftar di Spreadsheet.<br>
               <button onclick="switchAppTab('enroll')" class="mt-2.5 px-3 py-1.5 bg-brand-600/20 hover:bg-brand-600/40 text-brand-300 border border-brand-500/30 rounded-lg text-xs transition inline-flex items-center gap-1.5">
-                <i class="fa-solid fa-user-plus"></i> Daftarkan Siswa Baru di Tab Pendaftaran
+                <i class="fa-solid fa-user-tie"></i> Daftarkan Guru / Staf TU di Tab Pendaftaran
               </button>
             </td>
           </tr>
@@ -1775,12 +1787,12 @@
 
       let filtered = STATE.students.filter(s => {
         const matchClass = (filterClass === 'ALL' || s.class_name === filterClass);
-        const matchSearch = (!searchKey || s.name.toLowerCase().includes(searchKey) || s.nisn.includes(searchKey));
+        const matchSearch = (!searchKey || s.name.toLowerCase().includes(searchKey) || s.nisn.toLowerCase().includes(searchKey));
         return matchClass && matchSearch;
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-500">Tidak ada siswa yang sesuai kriteria pencarian.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-500">Tidak ada Guru / Staf TU yang sesuai kriteria pencarian.</td></tr>`;
       } else {
         tbody.innerHTML = filtered.map(student => {
           const att = STATE.attendances.find(a => a.student_id === student.id);
@@ -1790,11 +1802,11 @@
               <td class="py-3 px-3">
                 <div class="flex items-center gap-2.5">
                   <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center flex-shrink-0">
-                    ${student.photo_url ? `<img src="${student.photo_url}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-user text-slate-500 text-xs"></i>`}
+                    ${student.photo_url ? `<img src="${student.photo_url}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-user-tie text-slate-500 text-xs"></i>`}
                   </div>
                   <div>
                     <div class="font-semibold text-slate-200">${student.name}</div>
-                    <div class="text-[10px] text-slate-500 font-mono">NISN: ${student.nisn}</div>
+                    <div class="text-[10px] text-slate-500 font-mono">NIP/NUPTK: ${student.nisn}</div>
                   </div>
                 </div>
               </td>
@@ -1830,11 +1842,11 @@
       const select = document.getElementById('filterClassSelect');
       const currentVal = select.value;
       const classes = Array.from(new Set(STATE.students.map(s => s.class_name))).filter(Boolean).sort();
-      select.innerHTML = '<option value="ALL">Semua Kelas</option>';
+      select.innerHTML = '<option value="ALL">Semua Jabatan / Unit</option>';
       classes.forEach(c => {
         const opt = document.createElement('option');
         opt.value = c;
-        opt.textContent = `Kelas ${c}`;
+        opt.textContent = c;
         select.appendChild(opt);
       });
       if (classes.includes(currentVal)) {
@@ -1852,10 +1864,10 @@
 
     function exportAttendanceCSV() {
       if (STATE.students.length === 0) {
-        showToast('Tidak ada data siswa untuk diekspor.', 'info');
+        showToast('Tidak ada data Guru / Staf TU untuk diekspor.', 'info');
         return;
       }
-      let csv = 'NISN,Nama Siswa,Kelas,Tanggal,Jam Hadir,Status\n';
+      let csv = 'NIP/NUPTK,Nama Guru / Staf TU,Jabatan / Unit Kerja,Tanggal,Jam Hadir,Status\n';
       const today = new Date().toISOString().split('T')[0];
 
       STATE.students.forEach(s => {
@@ -1869,10 +1881,10 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Presensi_Wajah_${today}.csv`;
+      a.download = `Presensi_GTK_${today}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast('File CSV presensi berhasil diunduh.', 'success');
+      showToast('File CSV presensi Guru & Staf TU berhasil diunduh.', 'success');
     }
 
     async function refreshDataAttendance() {
@@ -2015,7 +2027,7 @@
               const student = STATE.students.find(s => s.id === bestMatch.label);
               if (student) processAttendanceHit(student);
             } else {
-              showToast('Wajah tidak cocok dengan data siswa mana pun.', 'error');
+              showToast('Wajah tidak cocok dengan data Guru / Staf TU mana pun.', 'error');
             }
           } catch (err) {
             console.error('Scan processing error:', err);
@@ -2085,18 +2097,18 @@
       const className = document.getElementById('enrollClass').value.trim().toUpperCase();
 
       if (!nisn || !name || !className) {
-        showToast('Harap lengkapi NISN, Nama, dan Kelas siswa.', 'error');
+        showToast('Harap lengkapi NIP/NUPTK, Nama Lengkap, dan Jabatan/Unit Kerja.', 'error');
         return;
       }
 
       if (!STATE.enrollExtractedDescriptor) {
-        showToast('Ambil sampel foto wajah siswa terlebih dahulu.', 'error');
+        showToast('Ambil sampel foto wajah Guru / Staf TU terlebih dahulu.', 'error');
         return;
       }
 
       // Jika diakses dari GitHub Pages dan URL belum dikonfigurasi
       if (!STATE.isGas && !STATE.gasApiUrl) {
-        openConnectGasModal('Untuk menyimpan data siswa ke Google Spreadsheet, silakan hubungkan URL Web App Google Apps Script Anda terlebih dahulu.');
+        openConnectGasModal('Untuk menyimpan data Guru / Staf TU ke Google Spreadsheet, silakan hubungkan URL Web App Google Apps Script Anda terlebih dahulu.');
         return;
       }
 
@@ -2105,7 +2117,7 @@
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
 
       const newStudent = {
-        id: 'std_' + Date.now(),
+        id: 'gtk_' + Date.now(),
         nisn: nisn,
         name: name,
         class_name: className,
@@ -2116,7 +2128,7 @@
 
       const res = await callBackendApi('saveStudent', { student: newStudent });
       btn.removeAttribute('disabled');
-      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Siswa';
+      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Pegawai';
 
       if (res && res.success) {
         const savedStudent = res.student || newStudent;
@@ -2126,7 +2138,7 @@
         renderEnrolledStudents();
         renderAttendanceTable();
         resetEnrollForm();
-        showToast(`Siswa ${name} berhasil disimpan ke Google Spreadsheet!`, 'success');
+        showToast(`Data ${name} berhasil disimpan ke Google Spreadsheet!`, 'success');
       } else {
         if (res && res.isDemo) {
           openConnectGasModal('Penyimpanan gagal karena Google Spreadsheet belum terhubung. Masukkan URL Web App Google Apps Script Anda.');
@@ -2286,14 +2298,14 @@
     function renderEnrolledStudents() {
       const container = document.getElementById('enrolledStudentsContainer');
       const badge = document.getElementById('enrollTotalCountBadge');
-      if (badge) badge.textContent = `${STATE.students.length} Siswa`;
+      if (badge) badge.textContent = `${STATE.students.length} Pegawai`;
       if (!container) return;
 
       if (STATE.students.length === 0) {
         container.innerHTML = `
           <div class="p-8 text-center text-slate-500 text-xs">
             <i class="fa-solid fa-users-slash text-2xl mb-2 text-slate-600 block"></i>
-            Belum ada siswa terdaftar. Daftarkan siswa baru pada formulir di samping.
+            Belum ada Guru / Staf TU terdaftar. Daftarkan pegawai baru pada formulir di samping.
           </div>
         `;
         return;
@@ -2305,14 +2317,14 @@
             <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center flex-shrink-0">
               ${s.photo_url 
                 ? `<img src="${s.photo_url}" alt="${s.name}" class="w-full h-full object-cover">` 
-                : `<i class="fa-solid fa-user text-slate-500"></i>`}
+                : `<i class="fa-solid fa-user-tie text-slate-500"></i>`}
             </div>
             <div class="min-w-0">
               <h4 class="text-xs font-bold text-white truncate">${s.name}</h4>
-              <p class="text-[11px] text-slate-400 font-mono">NISN: ${s.nisn} | Kelas: ${s.class_name}</p>
+              <p class="text-[11px] text-slate-400 font-mono">NIP/NUPTK: ${s.nisn} | Jabatan: ${s.class_name}</p>
             </div>
           </div>
-          <button onclick="deleteStudent('${s.id}')" title="Hapus Siswa" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center transition flex-shrink-0">
+          <button onclick="deleteStudent('${s.id}')" title="Hapus Pegawai" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center transition flex-shrink-0">
             <i class="fa-solid fa-trash-can text-xs"></i>
           </button>
         </div>
@@ -2334,9 +2346,9 @@
         updateClassFilterOptions();
         renderEnrolledStudents();
         renderAttendanceTable();
-        showToast(`Siswa ${student.name} berhasil dihapus.`, 'success');
+        showToast(`Data ${student.name} berhasil dihapus.`, 'success');
       } else {
-        showToast(`Gagal menghapus siswa: ${res?.message || 'Error'}`, 'error');
+        showToast(`Gagal menghapus data pegawai: ${res?.message || 'Error'}`, 'error');
       }
     }
 
@@ -2628,7 +2640,7 @@
       if (customMessage) {
         notice.textContent = customMessage;
       } else {
-        notice.innerHTML = 'Agar pendaftaran siswa dan presensi wajah otomatis tersimpan di <strong>Google Spreadsheet</strong> Anda, masukkan URL Deployment Web App Google Apps Script Anda:';
+        notice.innerHTML = 'Agar pendaftaran Guru / Staf TU dan presensi wajah otomatis tersimpan di <strong>Google Spreadsheet</strong> Anda, masukkan URL Deployment Web App Google Apps Script Anda:';
       }
 
       modal.classList.remove('hidden');
@@ -2741,25 +2753,25 @@
           {
             id: 'mock-s1',
             imageSource: 'url',
-            imageUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1000&auto=format&fit=crop&q=80',
-            title: 'Gedung Kampus & Presensi Digital',
-            description: 'Presensi cerdas bebas hambatan izin kamera browser.',
+            imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1000&auto=format&fit=crop&q=80',
+            title: 'Terminal Presensi Ruang Guru & Staf TU',
+            description: 'Presensi cerdas Pendidik dan Tenaga Kependidikan bebas hambatan izin kamera.',
             order: 1
           },
           {
             id: 'mock-s2',
             imageSource: 'url',
-            imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1000&auto=format&fit=crop&q=80',
-            title: 'Monitoring Kehadiran Realtime',
-            description: 'Presisi tinggi 128-D vector AI mendeteksi kehadiran siswa.',
+            imageUrl: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1000&auto=format&fit=crop&q=80',
+            title: 'Monitoring Kehadiran Pendidik Realtime',
+            description: 'Presisi tinggi 128-D vector AI memverifikasi kehadiran Guru dan Staf TU secara akurat.',
             order: 2
           },
           {
             id: 'mock-s3',
             imageSource: 'url',
-            imageUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1000&auto=format&fit=crop&q=80',
-            title: 'Pendidikan Cerdas Berbasis Data',
-            description: 'Rekapitulasi otomatis tersimpan ke Google Spreadsheet.',
+            imageUrl: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1000&auto=format&fit=crop&q=80',
+            title: 'Pelayanan Administrasi Tata Usaha Modern',
+            description: 'Rekapitulasi kehadiran kepegawaian otomatis tersimpan ke Google Spreadsheet.',
             order: 3
           }
         ];
