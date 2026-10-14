@@ -1124,7 +1124,28 @@
       deletingStaffId: null,
       audioCtx: null,
       location: {
-// ... existing code ... -->
+        address: 'Jl. Raya Mayor Oking Jaya Atmaja, Citeureup, Kec. Citeureup, Kabupaten Bogor, Jawa Barat',
+        latitude: -6.4883,
+        longitude: 106.8778,
+        status: true
+      },
+      settings: {
+        appName: 'FaceAttend AI',
+        schoolName: 'SMP PGRI CITEUREUP',
+        whatsapp: '081234567890',
+        email: 'info@smppgriciteureup.sch.id',
+        copyright: '© 2026 FaceAttend AI — SMP PGRI CITEUREUP. Seluruh Hak Cipta Dilindungi.'
+      }
+    };
+
+    async function callBackendApi(action, payload = {}) {
+      // 1. Jika berjalan di dalam Google Apps Script Native
+      if (STATE.isGas) {
+        return new Promise((resolve) => {
+          const runner = google.script.run
+            .withSuccessHandler(res => resolve(res))
+            .withFailureHandler(err => resolve({ success: false, message: err.message }));
+
           if (action === 'getStudents' || action === 'getStaff') runner.getStaffList();
           else if (action === 'getAttendancesToday') runner.getAttendancesToday(payload.date);
           else if (action === 'getCarousel') runner.getCarouselSlides();
@@ -1169,7 +1190,266 @@
           return { success: false, message: 'Gagal menghubungi Google Apps Script API: ' + err.message };
         }
       }
-// ... existing code ... -->
+
+      // 3. Fallback Demo / LocalStorage jika belum terhubung ke GAS
+      return handleLocalFallbackApi(action, payload);
+    }
+
+    function handleLocalFallbackApi(action, payload = {}) {
+      const localStaff = JSON.parse(localStorage.getItem('faceattend_demo_staff') || '[]');
+      const localAtt = JSON.parse(localStorage.getItem('faceattend_demo_att') || '[]');
+      const localSlides = JSON.parse(localStorage.getItem('faceattend_demo_slides') || '[]');
+
+      if (action === 'getStudents' || action === 'getStaff') {
+        return { success: true, isDemo: true, students: localStaff, staff: localStaff };
+      }
+      if (action === 'getAttendancesToday') {
+        const today = new Date().toISOString().split('T')[0];
+        return { success: true, isDemo: true, attendances: localAtt.filter(a => a.date === today) };
+      }
+      if (action === 'getCarousel') {
+        return { success: true, isDemo: true, slides: localSlides };
+      }
+      if (action === 'getLocation') {
+        return { success: true, isDemo: true, location: STATE.location };
+      }
+      if (action === 'getSettings') {
+        return { success: true, isDemo: true, settings: STATE.settings };
+      }
+      if (action === 'saveStudent' || action === 'saveStaff') {
+        const s = payload.staff || payload.student;
+        localStaff.push(s);
+        localStorage.setItem('faceattend_demo_staff', JSON.stringify(localStaff));
+        return { success: true, isDemo: true, student: s, staff: s };
+      }
+      if (action === 'updateStudent' || action === 'updateStaff') {
+        const s = payload.staff || payload.student;
+        const idx = localStaff.findIndex(item => String(item.id) === String(s.id));
+        if (idx > -1) {
+          localStaff[idx] = { ...localStaff[idx], ...s };
+          localStorage.setItem('faceattend_demo_staff', JSON.stringify(localStaff));
+          return { success: true, isDemo: true, student: localStaff[idx], staff: localStaff[idx] };
+        }
+        return { success: false, isDemo: true, message: 'Data tidak ditemukan' };
+      }
+      if (action === 'deleteStudent' || action === 'deleteStaff') {
+        const id = payload.staffId || payload.studentId;
+        const updated = localStaff.filter(item => String(item.id) !== String(id));
+        localStorage.setItem('faceattend_demo_staff', JSON.stringify(updated));
+        return { success: true, isDemo: true };
+      }
+      if (action === 'recordAttendance') {
+        const s = payload.staff || payload.student;
+        const today = new Date().toISOString().split('T')[0];
+        const exists = localAtt.find(a => String(a.student_id) === String(s?.id) && a.date === today);
+        if (exists) return { success: true, isDemo: true, alreadyAttended: true, attendance: exists };
+        const rec = {
+          id: 'att_' + Date.now(),
+          student_id: s?.id || payload.studentId,
+          nisn: s?.nisn || '-',
+          name: s?.name || 'Pegawai',
+          class_name: s?.class_name || '-',
+          date: today,
+          time: new Date().toTimeString().split(' ')[0],
+          status: 'Hadir'
+        };
+        localAtt.push(rec);
+        localStorage.setItem('faceattend_demo_att', JSON.stringify(localAtt));
+        return { success: true, isDemo: true, alreadyAttended: false, attendance: rec };
+      }
+      if (action === 'saveCarousel') {
+        const slide = payload.slide;
+        if (slide.photoBase64 && !slide.imageUrl) slide.imageUrl = slide.photoBase64;
+        localSlides.push(slide);
+        localStorage.setItem('faceattend_demo_slides', JSON.stringify(localSlides));
+        return { success: true, isDemo: true };
+      }
+      if (action === 'deleteCarousel') {
+        const updated = localSlides.filter(s => s.id !== payload.slideId);
+        localStorage.setItem('faceattend_demo_slides', JSON.stringify(updated));
+        return { success: true, isDemo: true };
+      }
+      if (action === 'saveLocation') {
+        return { success: true, isDemo: true };
+      }
+      if (action === 'saveSettings') {
+        return { success: true, isDemo: true };
+      }
+      return { success: false, isDemo: true, message: 'Mode Demo Aktif' };
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem('faceattend_theme') || 'dark';
+      STATE.theme = saved;
+      applyTheme();
+    }
+
+    function toggleTheme() {
+      STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('faceattend_theme', STATE.theme);
+      applyTheme();
+    }
+
+    function applyTheme() {
+      const htmlEl = document.documentElement;
+      const bodyEl = document.getElementById('mainBody');
+      const iconEl = document.getElementById('themeIcon');
+      if (STATE.theme === 'light') {
+        htmlEl.classList.remove('dark');
+        if (bodyEl) {
+          bodyEl.classList.remove('bg-slate-950', 'text-slate-100');
+          bodyEl.classList.add('bg-slate-900', 'text-slate-100');
+        }
+        if (iconEl) iconEl.className = 'fa-solid fa-moon text-blue-400';
+      } else {
+        htmlEl.classList.add('dark');
+        if (bodyEl) {
+          bodyEl.classList.remove('bg-slate-900');
+          bodyEl.classList.add('bg-slate-950', 'text-slate-100');
+        }
+        if (iconEl) iconEl.className = 'fa-solid fa-sun text-amber-400';
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const box = document.getElementById('toastNotificationBox');
+      if (!box) return;
+      const item = document.createElement('div');
+      const colorMap = {
+        success: 'bg-emerald-950/95 border-emerald-500/60 text-emerald-200',
+        error: 'bg-rose-950/95 border-rose-500/60 text-rose-200',
+        info: 'bg-slate-900/95 border-brand-500/60 text-slate-200'
+      };
+      const iconMap = {
+        success: 'fa-circle-check text-emerald-400',
+        error: 'fa-triangle-exclamation text-rose-400',
+        info: 'fa-circle-info text-brand-400'
+      };
+      item.className = `pointer-events-auto max-w-xs sm:max-w-sm px-3.5 py-2.5 rounded-xl border shadow-2xl text-xs flex items-center gap-2.5 transition-all duration-300 ${colorMap[type] || colorMap.info}`;
+      item.innerHTML = `<i class="fa-solid ${iconMap[type] || iconMap.info} text-sm flex-shrink-0"></i><span class="leading-snug">${message}</span>`;
+      box.appendChild(item);
+      setTimeout(() => {
+        item.classList.add('opacity-0', 'translate-x-4');
+        setTimeout(() => item.remove(), 300);
+      }, 3600);
+    }
+
+    function playVerificationChime() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        if (!STATE.audioCtx) STATE.audioCtx = new AudioContext();
+        const ctx = STATE.audioCtx;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = 'sine';
+        osc2.type = 'triangle';
+        osc1.frequency.setValueAtTime(587.33, now); // D5
+        osc1.frequency.setValueAtTime(880, now + 0.11); // A5
+        osc2.frequency.setValueAtTime(293.66, now);
+        osc2.frequency.setValueAtTime(440, now + 0.11);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.45);
+        osc2.stop(now + 0.45);
+      } catch (e) {
+        console.warn('Audio chime error:', e);
+      }
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input || !icon) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fa-solid fa-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'fa-solid fa-eye';
+      }
+    }
+
+    function navigateToSection(sectionId) {
+      stopScannerCamera();
+      stopEnrollCamera();
+      const viewLanding = document.getElementById('viewLanding');
+      const viewApp = document.getElementById('viewApp');
+      if (viewLanding) viewLanding.classList.remove('hidden');
+      if (viewApp) {
+        viewApp.classList.add('hidden');
+        viewApp.classList.remove('flex');
+      }
+      const target = document.getElementById(sectionId);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function openAppTab(tabName) {
+      const viewLanding = document.getElementById('viewLanding');
+      const viewApp = document.getElementById('viewApp');
+      if (viewLanding) viewLanding.classList.add('hidden');
+      if (viewApp) {
+        viewApp.classList.remove('hidden');
+        viewApp.classList.add('flex');
+      }
+      switchAppTab(tabName);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function switchAppTab(tabName) {
+      stopScannerCamera();
+      stopEnrollCamera();
+
+      const tabs = ['presensi', 'enroll', 'carouselAdmin', 'settings'];
+      const subTabs = {
+        presensi: document.getElementById('subTabPresensi'),
+        enroll: document.getElementById('subTabEnroll'),
+        carouselAdmin: document.getElementById('subTabCarouselAdmin'),
+        settings: document.getElementById('subTabSettings')
+      };
+      const btns = {
+        presensi: document.getElementById('tabBtnPresensi'),
+        enroll: document.getElementById('tabBtnEnroll'),
+        carouselAdmin: document.getElementById('tabBtnCarouselAdmin'),
+        settings: document.getElementById('tabBtnSettings')
+      };
+
+      tabs.forEach(t => {
+        if (subTabs[t]) {
+          if (t === tabName) {
+            subTabs[t].classList.remove('hidden');
+            subTabs[t].classList.add('grid');
+          } else {
+            subTabs[t].classList.add('hidden');
+            subTabs[t].classList.remove('grid');
+          }
+        }
+        if (btns[t]) {
+          if (t === tabName) {
+            btns[t].className = 'px-3.5 py-1.5 rounded-lg flex items-center gap-2 bg-brand-600 text-white shadow transition';
+          } else {
+            btns[t].className = 'px-3.5 py-1.5 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white transition';
+          }
+        }
+      });
+
       if (tabName === 'presensi') renderAttendanceTable();
       else if (tabName === 'enroll') {
         renderEnrolledStudents();
@@ -1177,6 +1457,177 @@
       }
       else if (tabName === 'carouselAdmin') renderAdminCarouselList();
       else if (tabName === 'settings') loadSettingsToForm();
+    }
+
+    function render3DCarousel() {
+      const stage = document.getElementById('carouselStage');
+      const dots = document.getElementById('carouselDots');
+      if (!stage || !dots) return;
+
+      const slides = STATE.carouselSlides || [];
+      if (slides.length === 0) {
+        stage.innerHTML = '';
+        dots.innerHTML = '';
+        return;
+      }
+
+      if (STATE.activeSlideIndex >= slides.length) STATE.activeSlideIndex = 0;
+
+      stage.innerHTML = slides.map((s, idx) => {
+        let posClass = 'card-pos-hidden';
+        const total = slides.length;
+        const prevIdx = (STATE.activeSlideIndex - 1 + total) % total;
+        const nextIdx = (STATE.activeSlideIndex + 1) % total;
+
+        if (idx === STATE.activeSlideIndex) posClass = 'card-pos-active';
+        else if (idx === prevIdx) posClass = 'card-pos-prev';
+        else if (idx === nextIdx && total > 2) posClass = 'card-pos-next';
+        else if (idx === nextIdx && total === 2) posClass = 'card-pos-next';
+
+        return `
+          <div onclick="setCarouselSlide(${idx})" class="carousel-item-card ${posClass} cursor-pointer rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-900 shadow-2xl flex flex-col">
+            <div class="relative flex-1 overflow-hidden bg-slate-950">
+              <img src="${s.imageUrl}" alt="${s.title || 'Slide'}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/800x500/0f172a/38bdf8?text=SMP+PGRI+CITEUREUP'">
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent"></div>
+              <div class="absolute bottom-4 left-4 right-4">
+                <span class="px-2 py-0.5 rounded bg-brand-500/20 border border-brand-400/30 text-brand-300 font-mono text-[10px]">GALERI #${idx + 1}</span>
+                <h3 class="text-base sm:text-lg font-bold text-white mt-1 truncate">${s.title || 'Fasilitas Sekolah'}</h3>
+                <p class="text-xs text-slate-300 line-clamp-2 mt-0.5">${s.description || ''}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      dots.innerHTML = slides.map((_, idx) => `
+        <button onclick="setCarouselSlide(${idx})" class="h-2 rounded-full transition-all ${idx === STATE.activeSlideIndex ? 'w-7 bg-brand-400' : 'w-2 bg-slate-700 hover:bg-slate-500'}"></button>
+      `).join('');
+    }
+
+    function setCarouselSlide(index) {
+      if (!STATE.carouselSlides.length) return;
+      STATE.activeSlideIndex = index;
+      render3DCarousel();
+    }
+
+    function nextCarouselSlide() {
+      if (!STATE.carouselSlides.length) return;
+      STATE.activeSlideIndex = (STATE.activeSlideIndex + 1) % STATE.carouselSlides.length;
+      render3DCarousel();
+    }
+
+    function prevCarouselSlide() {
+      if (!STATE.carouselSlides.length) return;
+      STATE.activeSlideIndex = (STATE.activeSlideIndex - 1 + STATE.carouselSlides.length) % STATE.carouselSlides.length;
+      render3DCarousel();
+    }
+
+    function updateGoogleMapsIframe() {
+      const addrText = document.getElementById('mapsAddressText');
+      const iframe = document.getElementById('mapsIframe');
+      const placeholder = document.getElementById('mapsPlaceholder');
+      const directLink = document.getElementById('mapsDirectLink');
+
+      if (addrText) addrText.textContent = STATE.location.address || 'Citeureup, Kabupaten Bogor, Jawa Barat';
+
+      if (STATE.location.status === false) {
+        if (iframe) iframe.classList.add('hidden');
+        if (placeholder) placeholder.classList.remove('hidden');
+        return;
+      }
+
+      if (iframe && placeholder) {
+        iframe.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        const lat = STATE.location.latitude ?? -6.4883;
+        const lng = STATE.location.longitude ?? 106.8778;
+        iframe.src = `https://maps.google.com/maps?q=${lat},${lng}&hl=id&z=16&output=embed`;
+        if (directLink) directLink.href = `https://www.google.com/maps?q=${lat},${lng}`;
+      }
+    }
+
+    function initScrollObserver() {
+      const cards = document.querySelectorAll('.scroll-reveal-card');
+      if (!('IntersectionObserver' in window)) {
+        cards.forEach(c => c.classList.add('revealed'));
+        return;
+      }
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+          }
+        });
+      }, { threshold: 0.12 });
+      cards.forEach(c => obs.observe(c));
+    }
+
+    function initHeroTilt() {
+      const card = document.getElementById('heroTiltCard');
+      if (!card) return;
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const rotY = ((x / rect.width) - 0.5) * 8;
+        const rotX = ((y / rect.height) - 0.5) * -8;
+        card.style.transform = `perspective(900px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+      });
+    }
+
+    async function loadFaceModels() {
+      const label = document.getElementById('aiStatusLabel');
+      if (typeof faceapi === 'undefined') {
+        if (label) {
+          label.textContent = 'Library AI Gagal Dimuat';
+          label.className = 'text-rose-400';
+        }
+        return;
+      }
+      try {
+        if (label) label.textContent = 'Memuat Vektor AI...';
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        STATE.modelsLoaded = true;
+        if (label) {
+          label.textContent = 'Siap (128-D Aktif)';
+          label.className = 'text-emerald-400';
+        }
+        rebuildFaceMatcher();
+      } catch (err) {
+        console.error('Face model load error:', err);
+        if (label) {
+          label.textContent = 'Gagal Memuat Model';
+          label.className = 'text-rose-400';
+        }
+      }
+    }
+
+    async function populateCameraDevices() {
+      const select = document.getElementById('selectCameraDevice');
+      if (!select || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        const current = select.value;
+        select.innerHTML = '<option value="">Kamera Default</option>';
+        videoDevices.forEach((d, idx) => {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          opt.textContent = d.label || `Kamera #${idx + 1}`;
+          select.appendChild(opt);
+        });
+        if (current) select.value = current;
+      } catch (e) {
+        console.warn('Enumerate camera warning:', e);
+      }
     }
     async function syncStaffFromCloud(silent = false) {
       const icon = document.getElementById('syncStaffIcon');
@@ -1309,7 +1760,6 @@
 
       document.getElementById('enrollNisn').focus();
       showToast(`Mode Edit: ${staff.name}. Anda dapat mengubah data atau mengambil foto baru.`, 'info');
-    }
     }
 
     async function startScannerCamera() {
@@ -1913,63 +2363,6 @@
       };
       reader.readAsDataURL(file);
       event.target.value = '';
-    }
-
-    async function submitNewStudent() {
-      const nisn = document.getElementById('enrollNisn').value.trim();
-      const name = document.getElementById('enrollName').value.trim();
-      const className = document.getElementById('enrollClass').value.trim().toUpperCase();
-
-      if (!nisn || !name || !className) {
-        showToast('Harap lengkapi NIP/NUPTK, Nama Lengkap, dan Jabatan/Unit Kerja.', 'error');
-        return;
-      }
-
-      if (!STATE.enrollExtractedDescriptor) {
-        showToast('Ambil sampel foto wajah Guru / Staf TU terlebih dahulu.', 'error');
-        return;
-      }
-
-      // Jika diakses dari GitHub Pages dan URL belum dikonfigurasi
-      if (!STATE.isGas && !STATE.gasApiUrl) {
-        openConnectGasModal('Untuk menyimpan data Guru / Staf TU ke Google Spreadsheet, silakan hubungkan URL Web App Google Apps Script Anda terlebih dahulu.');
-        return;
-      }
-
-      const btn = document.getElementById('btnSaveStudent');
-      btn.setAttribute('disabled', 'true');
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
-
-      const newStudent = {
-        id: 'gtk_' + Date.now(),
-        nisn: nisn,
-        name: name,
-        class_name: className,
-        face_descriptor: STATE.enrollExtractedDescriptor,
-        photo_url: STATE.enrollExtractedPhoto,
-        photoBase64: STATE.enrollExtractedPhoto
-      };
-
-      const res = await callBackendApi('saveStudent', { student: newStudent });
-      btn.removeAttribute('disabled');
-      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Pegawai';
-
-      if (res && res.success) {
-        const savedStudent = res.student || newStudent;
-        STATE.students.push(savedStudent);
-        rebuildFaceMatcher();
-        updateClassFilterOptions();
-        renderEnrolledStudents();
-        renderAttendanceTable();
-        resetEnrollForm();
-        showToast(`Data ${name} berhasil disimpan ke Google Spreadsheet!`, 'success');
-      } else {
-        if (res && res.isDemo) {
-          openConnectGasModal('Penyimpanan gagal karena Google Spreadsheet belum terhubung. Masukkan URL Web App Google Apps Script Anda.');
-        } else {
-          showToast(`Gagal menyimpan ke Google Sheets: ${res?.message || 'Periksa koneksi backend'}`, 'error');
-        }
-      }
     }
 
     function checkSavedSession() {
