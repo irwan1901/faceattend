@@ -290,10 +290,9 @@
           <!-- Quick Micro Stats -->
           <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-800/80">
             <div>
-          <span class="text-xs font-mono font-semibold text-brand-400 uppercase tracking-widest">LOKASI & MONITOR PRESENSI</span>
-          <h2 class="text-2xl font-bold text-white mt-1" id="mapsTitle">Kampus SMP PGRI CITEUREUP</h2>
-          <p class="text-xs text-slate-400 mt-1 max-w-xl" id="mapsAddressText">Memuat alamat sekolah...</p>
-        </div>
+              <div class="font-mono text-xl md:text-2xl font-bold text-white">99.8%</div>
+              <div class="text-[11px] text-slate-400">Akurasi Vektor AI</div>
+            </div>
             <div>
               <div class="font-mono text-xl md:text-2xl font-bold text-emerald-400">&lt; 350ms</div>
               <div class="text-[11px] text-slate-400">Verifikasi Wajah</div>
@@ -649,12 +648,17 @@
     <!-- SUB-TAB 2: PENDAFTARAN WAJAH GURU & STAF TU -->
     <div id="subTabEnroll" class="hidden grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
       <section class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-        <div>
-          <h3 class="text-base font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-id-card-clip text-emerald-400"></i>
-            Pendaftaran Vektor Wajah Guru & Staf TU
-          </h3>
-          <p class="text-xs text-slate-400 mt-0.5">Ambil sampel foto langsung dari webcam untuk diekstraksi ke 128-D facial vector kepegawaian.</p>
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <h3 id="enrollFormTitle" class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-id-card-clip text-emerald-400"></i>
+              <span>Pendaftaran Vektor Wajah Guru & Staf TU</span>
+            </h3>
+            <p id="enrollFormSubtitle" class="text-xs text-slate-400 mt-0.5">Ambil sampel foto langsung dari webcam untuk diekstraksi ke 128-D facial vector kepegawaian.</p>
+          </div>
+          <button type="button" id="btnCancelEditStaff" onclick="resetEnrollForm()" class="hidden px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-medium items-center gap-1.5 transition">
+            <i class="fa-solid fa-xmark"></i> Batal Edit
+          </button>
         </div>
 
         <div class="space-y-3">
@@ -722,22 +726,34 @@
               <i class="fa-solid fa-camera"></i>
             </button>
             <button type="button" onclick="submitNewStudent()" id="btnSaveStudent" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition disabled:opacity-50">
-              <i class="fa-solid fa-floppy-disk"></i> Simpan Pegawai
+              <i class="fa-solid fa-floppy-disk"></i> <span id="btnSaveStudentText">Simpan Pegawai</span>
             </button>
           </div>
         </div>
       </section>
 
       <section class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 class="text-base font-bold text-white">Daftar Guru & Staf TU Terdaftar</h3>
-            <p class="text-xs text-slate-400">Basis data Pendidik & Tenaga Kependidikan di Google Sheets.</p>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span>Daftar Guru & Staf TU Terdaftar</span>
+            </h3>
+            <p class="text-xs text-slate-400">Tersinkronisasi otomatis ke Google Sheets untuk semua perangkat.</p>
           </div>
-          <span id="enrollTotalCountBadge" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 text-xs font-mono font-bold">0 Pegawai</span>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="syncStaffFromCloud()" title="Muat Ulang dari Spreadsheet" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-brand-400 border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-rotate" id="syncStaffIcon"></i> <span>Sinkronkan</span>
+            </button>
+            <span id="enrollTotalCountBadge" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 text-xs font-mono font-bold">0 Pegawai</span>
+          </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto max-h-[480px] border border-slate-800 rounded-xl">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+          <input type="text" id="searchEnrolledInput" oninput="renderEnrolledStudents()" placeholder="Cari nama, NIP/NUPTK, atau jabatan..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none">
+        </div>
+
+        <div class="flex-1 overflow-y-auto max-h-[440px] border border-slate-800 rounded-xl">
           <div id="enrolledStudentsContainer" class="divide-y divide-slate-800"></div>
         </div>
       </section>
@@ -1038,6 +1054,36 @@
     </div>
   </div>
 
+  <!-- Modal Konfirmasi Hapus Guru / Staf TU -->
+  <div id="deleteStaffModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-trash-can text-base"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-white">Hapus Data Pegawai?</h3>
+          <p class="text-[11px] text-slate-400">Tindakan ini akan menghapus data dari Google Spreadsheet.</p>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs">
+        <p class="text-slate-300">Anda yakin ingin menghapus:</p>
+        <p id="deleteStaffModalName" class="font-bold text-white mt-1">-</p>
+        <p id="deleteStaffModalNip" class="text-[11px] text-slate-400 font-mono mt-0.5">NIP/NUPTK: -</p>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <button type="button" onclick="closeDeleteStaffModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Batal
+        </button>
+        <button type="button" id="btnConfirmDeleteStaff" onclick="confirmDeleteStaff()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-rose-600/20 transition">
+          <i class="fa-solid fa-trash-can"></i> Ya, Hapus
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="toastNotificationBox" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- Hidden Native Camera Inputs (Bypass/Fallback for low-end mobile) -->
@@ -1074,32 +1120,11 @@
       uploadedSlideBase64: '',
       enrollExtractedDescriptor: null,
       enrollExtractedPhoto: null,
+      editingStaffId: null,
+      deletingStaffId: null,
       audioCtx: null,
       location: {
-        address: 'Jl. Raya Mayor Oking Jaya Atmaja, Citeureup, Kec. Citeureup, Kabupaten Bogor, Jawa Barat',
-        latitude: -6.4883,
-        longitude: 106.8778,
-        status: true
-      },
-      settings: {
-        schoolName: 'SMP PGRI CITEUREUP',
-        whatsapp: '081234567890',
-        email: 'info@smppgriciteureup.sch.id',
-        copyright: '© 2026 FaceAttend AI — SMP PGRI CITEUREUP. Seluruh Hak Cipta Dilindungi.'
-      }
-    };
-
-    /**
-     * UNIFIED API BRIDGE: Berkomunikasi via google.script.run ATAU fetch() ke GAS Web App API
-     */
-    async function callBackendApi(action, payload = {}) {
-      // 1. Jika berjalan di dalam lingkungan Google Apps Script
-      if (STATE.isGas) {
-        return new Promise((resolve) => {
-          const runner = google.script.run
-            .withSuccessHandler((res) => resolve(res))
-            .withFailureHandler((err) => resolve({ success: false, message: err.message || String(err) }));
-
+// ... existing code ... -->
           if (action === 'getStudents' || action === 'getStaff') runner.getStaffList();
           else if (action === 'getAttendancesToday') runner.getAttendancesToday(payload.date);
           else if (action === 'getCarousel') runner.getCarouselSlides();
@@ -1107,6 +1132,7 @@
           else if (action === 'getSettings') runner.getAppSettings();
           else if (action === 'login') runner.loginUser(payload.username, payload.password);
           else if (action === 'saveStudent' || action === 'saveStaff') runner.saveNewStaff(payload.student || payload.staff);
+          else if (action === 'updateStudent' || action === 'updateStaff') runner.updateStaff(payload.student || payload.staff);
           else if (action === 'deleteStudent' || action === 'deleteStaff') runner.deleteStaff(payload.studentId || payload.staffId);
           else if (action === 'recordAttendance') runner.recordAttendance(payload.studentId || payload.staffId, payload.student || payload.staff);
           else if (action === 'saveCarousel') runner.saveCarouselSlide(payload.slide);
@@ -1120,372 +1146,170 @@
       // 2. Jika berjalan di GitHub Pages dengan URL Web App GAS yang dikonfigurasi
       if (STATE.gasApiUrl) {
         try {
-          const bodyPayload = JSON.stringify({ action: action, ...payload });
-          const res = await fetch(STATE.gasApiUrl, {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: bodyPayload
-          });
-          return await res.json();
+          const isReadAction = ['getStudents', 'getStaff', 'getAttendancesToday', 'getCarousel', 'getLocation', 'getSettings', 'ping'].includes(action);
+          if (isReadAction) {
+            const urlObj = new URL(STATE.gasApiUrl);
+            urlObj.searchParams.set('action', action);
+            if (payload.date) urlObj.searchParams.set('date', payload.date);
+            urlObj.searchParams.set('_t', Date.now());
+            const res = await fetch(urlObj.toString(), { method: 'GET', redirect: 'follow' });
+            return await res.json();
+          } else {
+            const bodyPayload = JSON.stringify({ action: action, ...payload });
+            const res = await fetch(STATE.gasApiUrl, {
+              method: 'POST',
+              redirect: 'follow',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: bodyPayload
+            });
+            return await res.json();
+          }
         } catch (err) {
           console.warn('API Fetch error:', err);
           return { success: false, message: 'Gagal menghubungi Google Apps Script API: ' + err.message };
         }
       }
-
-      // 3. Jika URL Web App belum diisi saat berjalan di GitHub Pages
-      return { 
-        success: false, 
-        isDemo: true, 
-        message: 'Aplikasi belum terhubung ke Google Spreadsheet. Harap masukkan URL Web App Google Apps Script.' 
-      };
-    }
-
-    function playVerificationChime() {
-      try {
-        if (!STATE.audioCtx) {
-          STATE.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (STATE.audioCtx.state === 'suspended') {
-          STATE.audioCtx.resume();
-        }
-        const now = STATE.audioCtx.currentTime;
-        const osc = STATE.audioCtx.createOscillator();
-        const gain = STATE.audioCtx.createGain();
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, now); // D5
-        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
-
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
-
-        osc.connect(gain);
-        gain.connect(STATE.audioCtx.destination);
-
-        osc.start(now);
-        osc.stop(now + 0.4);
-      } catch (e) {
-        console.warn('Audio chime warning:', e);
-      }
-    }
-
-    function showToast(message, type = 'info') {
-      const box = document.getElementById('toastNotificationBox');
-      const toast = document.createElement('div');
-      const styles = {
-        success: 'bg-emerald-950/90 border-emerald-500/80 text-emerald-200',
-        error: 'bg-rose-950/90 border-rose-500/80 text-rose-200',
-        info: 'bg-slate-900/95 border-brand-500/80 text-slate-200'
-      };
-      const icons = {
-        success: 'fa-circle-check text-emerald-400',
-        error: 'fa-circle-exclamation text-rose-400',
-        info: 'fa-circle-info text-brand-400'
-      };
-
-      toast.className = `flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs shadow-2xl backdrop-blur-md pointer-events-auto transition-all transform translate-x-8 opacity-0 ${styles[type] || styles.info}`;
-      toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${message}</span>`;
-      box.appendChild(toast);
-
-      requestAnimationFrame(() => toast.classList.remove('translate-x-8', 'opacity-0'));
-      setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-x-8');
-        setTimeout(() => toast.remove(), 300);
-      }, 3500);
-    }
-
-    function initTheme() {
-      const saved = localStorage.getItem('faceattend_theme') || 'dark';
-      STATE.theme = saved;
-      applyTheme(saved);
-    }
-
-    function toggleTheme() {
-      const newTheme = STATE.theme === 'dark' ? 'light' : 'dark';
-      STATE.theme = newTheme;
-      localStorage.setItem('faceattend_theme', newTheme);
-      applyTheme(newTheme);
-    }
-
-    function applyTheme(theme) {
-      const html = document.documentElement;
-      const icon = document.getElementById('themeIcon');
-      if (theme === 'dark') {
-        html.classList.add('dark');
-        icon.className = 'fa-solid fa-sun';
-      } else {
-        html.classList.remove('dark');
-        icon.className = 'fa-solid fa-moon';
-      }
-    }
-
-    function togglePasswordVisibility(inputId, iconId) {
-      const input = document.getElementById(inputId);
-      const icon = document.getElementById(iconId);
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'fa-solid fa-eye-slash text-brand-400';
-      } else {
-        input.type = 'password';
-        icon.className = 'fa-solid fa-eye';
-      }
-    }
-
-    async function loadFaceModels() {
-      const label = document.getElementById('aiStatusLabel');
-      try {
-        label.textContent = 'Memuat Model AI...';
-        label.className = 'text-amber-400 font-mono animate-pulse';
-        if (typeof faceapi === 'undefined') {
-          throw new Error('face-api.js library belum siap atau terblokir');
-        }
-
-        const modelCdns = [
-          'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/',
-          'https://raw.githubusercontent.com/vladmandic/face-api/master/model/'
-        ];
-
-        let loaded = false;
-        for (const url of modelCdns) {
-          try {
-            await Promise.all([
-              faceapi.nets.tinyFaceDetector.loadFromUri(url),
-              faceapi.nets.faceLandmark68Net.loadFromUri(url),
-              faceapi.nets.faceRecognitionNet.loadFromUri(url)
-            ]);
-            loaded = true;
-            break;
-          } catch (e) {
-            console.warn(`Gagal memuat model dari ${url}, mencoba sumber cadangan...`);
-          }
-        }
-
-        if (!loaded) throw new Error('Semua endpoint CDN model tidak merespons.');
-
-        STATE.modelsLoaded = true;
-        label.textContent = 'AI Ready (128-D)';
-        label.className = 'text-emerald-400 font-mono';
-        showToast('Model AI Pengenal Wajah Siap.', 'success');
-      } catch (err) {
-        console.error('Face-API model load error:', err);
-        label.textContent = 'Gagal Muat AI';
-        label.className = 'text-rose-400 font-mono';
-        showToast('Gagal mengunduh model neural network wajah.', 'error');
-      }
-    }
-
-    function initScrollObserver() {
-      const cards = document.querySelectorAll('.scroll-reveal-card');
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('revealed');
-          }
-        });
-      }, { threshold: 0.12 });
-      cards.forEach(card => observer.observe(card));
-    }
-
-    function initHeroTilt() {
-      const card = document.getElementById('heroTiltCard');
-      if (!card) return;
-
-      card.addEventListener('mousemove', (e) => {
-        if (window.innerWidth < 1024) return;
-        const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const rotateX = ((y - centerY) / centerY) * -5;
-        const rotateY = ((x - centerX) / centerX) * 5;
-        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
-      });
-
-      card.addEventListener('mouseleave', () => {
-        card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
-      });
-    }
-
-    function render3DCarousel() {
-      const stage = document.getElementById('carouselStage');
-      const dotsBox = document.getElementById('carouselDots');
-      if (!stage || STATE.carouselSlides.length === 0) return;
-
-      stage.innerHTML = '';
-      dotsBox.innerHTML = '';
-
-      STATE.carouselSlides.forEach((slide, idx) => {
-        const item = document.createElement('div');
-        item.className = 'carousel-item-card';
-        item.id = `carouselSlide_${idx}`;
-
-        item.innerHTML = `
-          <div class="relative w-full h-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl group cursor-pointer" onclick="goToCarouselSlide(${idx})">
-            <img src="${slide.imageUrl}" alt="${slide.title}" class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-5">
-              <h4 class="text-base sm:text-lg font-bold text-white drop-shadow">${slide.title}</h4>
-              <p class="text-xs text-slate-300 line-clamp-2 mt-1 drop-shadow">${slide.description}</p>
-            </div>
-          </div>
-        `;
-        stage.appendChild(item);
-
-        const dot = document.createElement('button');
-        dot.className = `w-2.5 h-2.5 rounded-full transition-all ${idx === STATE.activeSlideIndex ? 'bg-brand-400 w-7' : 'bg-slate-700'}`;
-        dot.onclick = () => goToCarouselSlide(idx);
-        dotsBox.appendChild(dot);
-      });
-
-      update3DCarouselClasses();
-      startCarouselAutoplay();
-    }
-
-    function update3DCarouselClasses() {
-      const total = STATE.carouselSlides.length;
-      if (total === 0) return;
-
-      const active = STATE.activeSlideIndex;
-      const prev = (active - 1 + total) % total;
-      const next = (active + 1) % total;
-
-      for (let i = 0; i < total; i++) {
-        const el = document.getElementById(`carouselSlide_${i}`);
-        if (!el) continue;
-        el.className = 'carousel-item-card';
-
-        if (i === active) el.classList.add('card-pos-active');
-        else if (i === prev) el.classList.add('card-pos-prev');
-        else if (i === next) el.classList.add('card-pos-next');
-        else el.classList.add('card-pos-hidden');
-      }
-
-      const dots = document.getElementById('carouselDots').children;
-      for (let j = 0; j < dots.length; j++) {
-        dots[j].className = `w-2.5 h-2.5 rounded-full transition-all ${j === active ? 'bg-brand-400 w-7' : 'bg-slate-700'}`;
-      }
-    }
-
-    function nextCarouselSlide() {
-      if (STATE.carouselSlides.length === 0) return;
-      STATE.activeSlideIndex = (STATE.activeSlideIndex + 1) % STATE.carouselSlides.length;
-      update3DCarouselClasses();
-    }
-
-    function prevCarouselSlide() {
-      if (STATE.carouselSlides.length === 0) return;
-      STATE.activeSlideIndex = (STATE.activeSlideIndex - 1 + STATE.carouselSlides.length) % STATE.carouselSlides.length;
-      update3DCarouselClasses();
-    }
-
-    function goToCarouselSlide(idx) {
-      STATE.activeSlideIndex = idx;
-      update3DCarouselClasses();
-    }
-
-    function startCarouselAutoplay() {
-      if (STATE.carouselTimer) clearInterval(STATE.carouselTimer);
-      STATE.carouselTimer = setInterval(nextCarouselSlide, 4500);
-    }
-
-    function updateGoogleMapsIframe() {
-      const iframe = document.getElementById('mapsIframe');
-      const placeholder = document.getElementById('mapsPlaceholder');
-      const addressText = document.getElementById('mapsAddressText');
-      const directLink = document.getElementById('mapsDirectLink');
-
-      const loc = STATE.location || {};
-      const lat = typeof loc.latitude === 'number' ? loc.latitude : -6.4883;
-      const lng = typeof loc.longitude === 'number' ? loc.longitude : 106.8778;
-      const addr = loc.address || 'Pusat Informasi Kampus Sekolah';
-
-      if (addressText) addressText.textContent = addr;
-      
-      const queryParam = encodeURIComponent(lat + ',' + lng);
-      if (directLink) {
-        directLink.href = 'https://www.google.com/maps?q=' + queryParam;
-      }
-
-      if (iframe && placeholder) {
-        if (loc.status) {
-          iframe.classList.remove('hidden');
-          placeholder.classList.add('hidden');
-          iframe.src = 'https://maps.google.com/maps?q=' + queryParam + '&hl=id&z=15&output=embed';
-        } else {
-          iframe.classList.add('hidden');
-          placeholder.classList.remove('hidden');
-          iframe.removeAttribute('src');
-        }
-      }
-    }
-
-    function navigateToSection(sectionId) {
-      document.getElementById('viewLanding').classList.remove('hidden');
-      document.getElementById('viewApp').classList.add('hidden');
-      document.getElementById('viewApp').classList.remove('flex');
-      stopScannerCamera();
-      
-      const el = document.getElementById(sectionId);
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function openAppTab(tabName) {
-      document.getElementById('viewLanding').classList.add('hidden');
-      document.getElementById('viewApp').classList.remove('hidden');
-      document.getElementById('viewApp').classList.add('flex');
-      switchAppTab(tabName);
-    }
-
-    function switchAppTab(tabName) {
-      if (tabName !== 'presensi' && STATE.cameraActive) {
-        stopScannerCamera();
-      }
-      if (tabName !== 'enroll' && STATE.enrollStream) {
-        stopEnrollCamera();
-      }
-
-      const tabs = ['presensi', 'enroll', 'carouselAdmin', 'settings'];
-      tabs.forEach(t => {
-        const btn = document.getElementById(`tabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
-        const sub = document.getElementById(`subTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
-        if (t === tabName) {
-          if (btn) btn.className = 'px-3.5 py-1.5 rounded-lg flex items-center gap-2 bg-brand-600 text-white shadow transition';
-          if (sub) {
-            sub.classList.remove('hidden');
-            sub.classList.add('grid');
-          }
-        } else {
-          if (btn) btn.className = 'px-3.5 py-1.5 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white transition';
-          if (sub) {
-            sub.classList.add('hidden');
-            sub.classList.remove('grid');
-          }
-        }
-      });
-
+// ... existing code ... -->
       if (tabName === 'presensi') renderAttendanceTable();
-      else if (tabName === 'enroll') renderEnrolledStudents();
+      else if (tabName === 'enroll') {
+        renderEnrolledStudents();
+        syncStaffFromCloud(true);
+      }
       else if (tabName === 'carouselAdmin') renderAdminCarouselList();
       else if (tabName === 'settings') loadSettingsToForm();
     }
-
-    async function populateCameraDevices() {
-      const select = document.getElementById('selectCameraDevice');
-      select.innerHTML = '<option value="">Pilih Sumber Kamera...</option>';
+    async function syncStaffFromCloud(silent = false) {
+      const icon = document.getElementById('syncStaffIcon');
+      if (icon) icon.classList.add('fa-spin');
       try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
-        videoDevices.forEach((dev, idx) => {
-          const opt = document.createElement('option');
-          opt.value = dev.deviceId;
-          opt.textContent = dev.label || `Kamera ${idx + 1}`;
-          select.appendChild(opt);
-        });
+        const res = await callBackendApi('getStaff');
+        if (res && res.success) {
+          STATE.students = res.staff || res.students || [];
+          rebuildFaceMatcher();
+          updateClassFilterOptions();
+          renderEnrolledStudents();
+          renderAttendanceTable();
+          if (!silent) showToast(`Berhasil memuat ${STATE.students.length} data Guru & Staf TU dari Spreadsheet.`, 'success');
+        } else if (!silent && res && !res.isDemo) {
+          showToast(`Gagal memuat data pegawai: ${res.message || 'Error'}`, 'error');
+        }
       } catch (err) {
-        console.warn('Enumeration error:', err);
+        if (!silent) showToast('Gagal menyinkronkan data dari cloud.', 'error');
+      } finally {
+        if (icon) icon.classList.remove('fa-spin');
       }
+    }
+
+    async function submitNewStudent() {
+      const nisn = document.getElementById('enrollNisn').value.trim();
+      const name = document.getElementById('enrollName').value.trim();
+      const className = document.getElementById('enrollClass').value.trim().toUpperCase();
+      const isEditing = Boolean(STATE.editingStaffId);
+
+      if (!nisn || !name || !className) {
+        showToast('Harap lengkapi NIP/NUPTK, Nama Lengkap, dan Jabatan/Unit Kerja.', 'error');
+        return;
+      }
+
+      if (!STATE.enrollExtractedDescriptor) {
+        showToast('Ambil sampel foto wajah Guru / Staf TU terlebih dahulu.', 'error');
+        return;
+      }
+
+      if (!STATE.isGas && !STATE.gasApiUrl) {
+        openConnectGasModal('Untuk menyimpan data Guru / Staf TU ke Google Spreadsheet agar muncul di perangkat lain, silakan hubungkan URL Web App Google Apps Script Anda terlebih dahulu.');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveStudent');
+      btn.setAttribute('disabled', 'true');
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>${isEditing ? 'Memperbarui...' : 'Menyimpan...'}</span>`;
+
+      const staffPayload = {
+        id: isEditing ? STATE.editingStaffId : ('gtk_' + Date.now()),
+        nisn: nisn,
+        name: name,
+        class_name: className,
+        face_descriptor: STATE.enrollExtractedDescriptor,
+        photo_url: STATE.enrollExtractedPhoto,
+        photoBase64: (STATE.enrollExtractedPhoto && STATE.enrollExtractedPhoto.indexOf('base64,') > -1) ? STATE.enrollExtractedPhoto : ''
+      };
+
+      const actionName = isEditing ? 'updateStaff' : 'saveStaff';
+      const res = await callBackendApi(actionName, { staff: staffPayload, student: staffPayload });
+
+      btn.removeAttribute('disabled');
+      btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> <span id="btnSaveStudentText">${isEditing ? 'Simpan Perubahan' : 'Simpan Pegawai'}</span>`;
+
+      if (res && res.success) {
+        await syncStaffFromCloud(true);
+        resetEnrollForm();
+        showToast(
+          isEditing
+            ? `Data ${name} berhasil diperbarui di Google Spreadsheet!`
+            : `Data ${name} berhasil disimpan ke Google Spreadsheet!`,
+          'success'
+        );
+      } else {
+        if (res && res.isDemo) {
+          openConnectGasModal('Penyimpanan gagal karena Google Spreadsheet belum terhubung. Masukkan URL Web App Google Apps Script Anda.');
+        } else {
+          showToast(`Gagal menyimpan ke Google Sheets: ${res?.message || 'Periksa koneksi backend'}`, 'error');
+        }
+      }
+    }
+
+    function editStaff(staffId) {
+      const staff = STATE.students.find(s => String(s.id) === String(staffId));
+      if (!staff) return;
+
+      STATE.editingStaffId = staff.id;
+      document.getElementById('enrollNisn').value = staff.nisn || '';
+      document.getElementById('enrollName').value = staff.name || '';
+      document.getElementById('enrollClass').value = staff.class_name || '';
+
+      STATE.enrollExtractedDescriptor = staff.face_descriptor || null;
+      STATE.enrollExtractedPhoto = staff.photo_url || null;
+
+      const snapshot = document.getElementById('enrollSnapshotImg');
+      const placeholder = document.getElementById('enrollImgPlaceholder');
+      const badge = document.getElementById('descriptorReadyBadge');
+      const statusLabel = document.getElementById('enrollStatusLabel');
+
+      if (staff.photo_url) {
+        snapshot.src = staff.photo_url;
+        snapshot.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+      } else {
+        snapshot.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+      }
+
+      if (staff.face_descriptor && staff.face_descriptor.length === 128) {
+        badge.classList.remove('hidden');
+        statusLabel.textContent = 'Vektor Wajah Tersimpan (Siap Diedit)';
+        statusLabel.className = 'text-emerald-400 font-mono text-[11px]';
+      } else {
+        badge.classList.add('hidden');
+        statusLabel.textContent = 'Ambil Ulang Sampel Wajah';
+        statusLabel.className = 'text-amber-400 font-mono text-[11px]';
+      }
+
+      const formTitle = document.getElementById('enrollFormTitle');
+      if (formTitle) {
+        formTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-400"></i> <span>Edit Data Guru / Staf TU</span>`;
+      }
+      const btnCancel = document.getElementById('btnCancelEditStaff');
+      if (btnCancel) {
+        btnCancel.classList.remove('hidden');
+        btnCancel.classList.add('inline-flex');
+      }
+      const btnSaveText = document.getElementById('btnSaveStudentText');
+      if (btnSaveText) btnSaveText.textContent = 'Simpan Perubahan';
+
+      document.getElementById('enrollNisn').focus();
+      showToast(`Mode Edit: ${staff.name}. Anda dapat mengubah data atau mengambil foto baru.`, 'info');
+    }
     }
 
     async function startScannerCamera() {
@@ -2280,6 +2104,7 @@
     }
 
     function resetEnrollForm() {
+      STATE.editingStaffId = null;
       document.getElementById('enrollNisn').value = '';
       document.getElementById('enrollName').value = '';
       document.getElementById('enrollClass').value = '';
@@ -2291,6 +2116,18 @@
         statusLabel.textContent = 'Belum Ada Sampel';
         statusLabel.className = 'text-amber-400 font-mono text-[11px]';
       }
+      const formTitle = document.getElementById('enrollFormTitle');
+      if (formTitle) {
+        formTitle.innerHTML = `<i class="fa-solid fa-id-card-clip text-emerald-400"></i> <span>Pendaftaran Vektor Wajah Guru & Staf TU</span>`;
+      }
+      const btnCancel = document.getElementById('btnCancelEditStaff');
+      if (btnCancel) {
+        btnCancel.classList.add('hidden');
+        btnCancel.classList.remove('inline-flex');
+      }
+      const btnSaveText = document.getElementById('btnSaveStudentText');
+      if (btnSaveText) btnSaveText.textContent = 'Simpan Pegawai';
+
       STATE.enrollExtractedDescriptor = null;
       STATE.enrollExtractedPhoto = null;
     }
@@ -2298,6 +2135,9 @@
     function renderEnrolledStudents() {
       const container = document.getElementById('enrolledStudentsContainer');
       const badge = document.getElementById('enrollTotalCountBadge');
+      const searchInput = document.getElementById('searchEnrolledInput');
+      const keyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
       if (badge) badge.textContent = `${STATE.students.length} Pegawai`;
       if (!container) return;
 
@@ -2305,48 +2145,106 @@
         container.innerHTML = `
           <div class="p-8 text-center text-slate-500 text-xs">
             <i class="fa-solid fa-users-slash text-2xl mb-2 text-slate-600 block"></i>
-            Belum ada Guru / Staf TU terdaftar. Daftarkan pegawai baru pada formulir di samping.
+            Belum ada Guru / Staf TU terdaftar di Google Spreadsheet.<br>Silakan daftarkan pegawai baru pada formulir di samping.
           </div>
         `;
         return;
       }
 
-      container.innerHTML = STATE.students.map(s => `
-        <div class="p-3 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition">
+      const filtered = STATE.students.filter(s => {
+        if (!keyword) return true;
+        return (
+          (s.name && s.name.toLowerCase().includes(keyword)) ||
+          (s.nisn && String(s.nisn).toLowerCase().includes(keyword)) ||
+          (s.class_name && s.class_name.toLowerCase().includes(keyword))
+        );
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="p-8 text-center text-slate-500 text-xs">
+            Tidak ada pegawai yang cocok dengan pencarian "${keyword}".
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(s => {
+        const hasVector = s.face_descriptor && Array.isArray(s.face_descriptor) && s.face_descriptor.length === 128;
+        const isBeingEdited = String(STATE.editingStaffId) === String(s.id);
+        return `
+        <div class="p-3 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition ${isBeingEdited ? 'bg-brand-500/10 border-l-2 border-brand-400' : ''}">
           <div class="flex items-center gap-3 min-w-0">
             <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center flex-shrink-0">
               ${s.photo_url 
-                ? `<img src="${s.photo_url}" alt="${s.name}" class="w-full h-full object-cover">` 
+                ? `<img src="${s.photo_url}" alt="${s.name}" class="w-full h-full object-cover" onerror="this.style.display='none'">` 
                 : `<i class="fa-solid fa-user-tie text-slate-500"></i>`}
             </div>
             <div class="min-w-0">
-              <h4 class="text-xs font-bold text-white truncate">${s.name}</h4>
-              <p class="text-[11px] text-slate-400 font-mono">NIP/NUPTK: ${s.nisn} | Jabatan: ${s.class_name}</p>
+              <div class="flex items-center gap-2">
+                <h4 class="text-xs font-bold text-white truncate">${s.name}</h4>
+                ${hasVector 
+                  ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-mono">128-D</span>` 
+                  : `<span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-mono">No Vector</span>`}
+              </div>
+              <p class="text-[11px] text-slate-400 font-mono truncate">NIP/NUPTK: ${s.nisn} • <span class="text-brand-400">${s.class_name}</span></p>
             </div>
           </div>
-          <button onclick="deleteStudent('${s.id}')" title="Hapus Pegawai" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center transition flex-shrink-0">
-            <i class="fa-solid fa-trash-can text-xs"></i>
-          </button>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button type="button" onclick="editStaff('${s.id}')" title="Edit Data Pegawai" class="px-2.5 h-8 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 flex items-center justify-center gap-1 text-xs transition">
+              <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+              <span class="hidden sm:inline text-[11px] font-medium">Edit</span>
+            </button>
+            <button type="button" onclick="openDeleteStaffModal('${s.id}')" title="Hapus Pegawai" class="px-2.5 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center gap-1 text-xs transition">
+              <i class="fa-solid fa-trash-can text-[11px]"></i>
+              <span class="hidden sm:inline text-[11px] font-medium">Hapus</span>
+            </button>
+          </div>
         </div>
-      `).join('');
+      `}).join('');
     }
 
-    async function deleteStudent(studentId) {
-      const student = STATE.students.find(s => s.id === studentId);
+    function openDeleteStaffModal(staffId) {
+      const student = STATE.students.find(s => String(s.id) === String(staffId));
       if (!student) return;
 
-      showToast(`Menghapus data ${student.name}...`, 'info');
-      const res = await callBackendApi('deleteStudent', { studentId });
+      STATE.deletingStaffId = student.id;
+      document.getElementById('deleteStaffModalName').textContent = `${student.name} (${student.class_name})`;
+      document.getElementById('deleteStaffModalNip').textContent = `NIP/NUPTK: ${student.nisn}`;
+
+      const modal = document.getElementById('deleteStaffModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeDeleteStaffModal() {
+      STATE.deletingStaffId = null;
+      const modal = document.getElementById('deleteStaffModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function confirmDeleteStaff() {
+      if (!STATE.deletingStaffId) return;
+      const staffId = STATE.deletingStaffId;
+      const student = STATE.students.find(s => String(s.id) === String(staffId));
+      const btn = document.getElementById('btnConfirmDeleteStaff');
+
+      btn.setAttribute('disabled', 'true');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menghapus...';
+
+      const res = await callBackendApi('deleteStaff', { staffId: staffId, studentId: staffId });
+
+      btn.removeAttribute('disabled');
+      btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Ya, Hapus';
+      closeDeleteStaffModal();
 
       if (res && res.success) {
-        STATE.students = STATE.students.filter(s => s.id !== studentId);
-        STATE.attendances = STATE.attendances.filter(a => a.student_id !== studentId);
-        STATE.attendedTodaySet.delete(studentId);
-        rebuildFaceMatcher();
-        updateClassFilterOptions();
-        renderEnrolledStudents();
-        renderAttendanceTable();
-        showToast(`Data ${student.name} berhasil dihapus.`, 'success');
+        if (String(STATE.editingStaffId) === String(staffId)) {
+          resetEnrollForm();
+        }
+        await syncStaffFromCloud(true);
+        showToast(`Data ${student ? student.name : 'pegawai'} berhasil dihapus dari Spreadsheet.`, 'success');
       } else {
         showToast(`Gagal menghapus data pegawai: ${res?.message || 'Error'}`, 'error');
       }
